@@ -6,8 +6,6 @@ from sqlmodel import Field, Relationship, SQLModel
 
 
 class Business(SQLModel, table=True):
-    __tablename__ = "BUSINESS"
-
     id: Optional[int] = Field(default=None, primary_key=True)
     manifest: Optional[str] = Field(default=None)  # YAML Manifest
 
@@ -25,8 +23,6 @@ class Business(SQLModel, table=True):
 
 
 class Conversation(SQLModel, table=True):
-    __tablename__ = "CONVERSATION"
-
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
 
@@ -38,9 +34,7 @@ message_sequence = Sequence("message_sequence", start=1, increment=1)
 
 
 class Message(SQLModel, table=True):
-    __tablename__ = "MESSAGE"
-
-    id_sequence: Optional[int] = Field(
+    id: Optional[int] = Field(
         primary_key=True,
         sa_column_kwargs={"server_default": message_sequence.next_value()},
     )

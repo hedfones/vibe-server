@@ -1,6 +1,7 @@
 pydantic
-fastapi
+fastapi[standard]
 pyyaml
 openai
 sqlmodel
 uvicorn
+psycopg2-binary

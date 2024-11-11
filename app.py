@@ -1,9 +1,21 @@
 from fastapi import FastAPI, HTTPException
 
-from source import ConversationInitRequest, ConversationInitResponse, DatabaseService
+from source import (
+    ConversationInitRequest,
+    ConversationInitResponse,
+    DatabaseService,
+    PostgresCredentials,
+    SecretsManager,
+)
 
 app = FastAPI()
-db = DatabaseService()
+secrets = SecretsManager("./.env")
+
+db_creds = PostgresCredentials(
+    user=secrets.get_secret("POSTGRES_USER"),
+    password=secrets.get_secret("POSTGRES_PASSWORD"),
+)
+db = DatabaseService(db_creds)
 
 
 @app.post("/initialize-conversation/")
