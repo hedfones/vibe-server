@@ -2,3 +2,4 @@ ipykernel
 ruff
 isort
 pre-commit
+pytest
