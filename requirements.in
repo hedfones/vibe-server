@@ -1,0 +1,6 @@
+pydantic
+fastapi
+pyyaml
+openai
+sqlmodel
+uvicorn

@@ -1,0 +1,4 @@
+ipykernel
+ruff
+isort
+pre-commit
