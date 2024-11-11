@@ -42,4 +42,17 @@ def initialize_conversation(
 
 
 @app.post("/send-message/")
-def send_message(payload: UserMessageRequest) -> UserMessageResponse: ...
+def send_message(payload: UserMessageRequest) -> UserMessageResponse:
+    conversation = db.get_conversation_by_id(payload.conversation_id)
+    if not conversation:
+        raise HTTPException(
+            403, f"Conversation with ID {payload.conversation_id} not found."
+        )
+    business = db.get_business_by_id(conversation.business_id)
+    assistant = Assistant(openai_creds, business.assistant_id, conversation.thread_id)
+    message = {"role": "user", "content": payload.content}
+    assistant.add_message(message)
+    message_response = assistant.retrieve_response()
+    print(message_response)
+    response = UserMessageResponse(content=message_response)
+    return response

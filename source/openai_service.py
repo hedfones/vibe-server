@@ -20,7 +20,10 @@ class AssistantMessage(TypedDict):
 
 class Assistant:
     def __init__(
-        self, credentials: OpenAICredentials, assistant_id: str, thread_id: str | None
+        self,
+        credentials: OpenAICredentials,
+        assistant_id: str,
+        thread_id: str | None = None,
     ) -> None:
         """
         Initializes the Assistant class.
@@ -77,7 +80,9 @@ class Assistant:
                 messages = self.client.beta.threads.messages.list(
                     thread_id=self.thread.id
                 )
-                message = messages.data[-1]
-                return message.content
+                message = messages.data[0]
+                print(message)
+                message_content = message.content[0].text.value
+                return message_content
             time.sleep(1)
         raise TimeoutError("Assistant took too long to respond.")

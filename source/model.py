@@ -22,7 +22,7 @@ class ConversationInitResponse(BaseModel):
 
 
 class UserMessageRequest(BaseModel):
-    conversation_id: str
+    conversation_id: int
     content: str
 
 
