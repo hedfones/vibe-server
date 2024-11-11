@@ -1,4 +1,4 @@
-from .database import DatabaseService, PostgresCredentials
+from .database import DatabaseService, Message, PostgresCredentials
 from .model import (
     ConversationInitRequest,
     ConversationInitResponse,
@@ -18,4 +18,5 @@ __all__ = [
     "OpenAICredentials",
     "UserMessageResponse",
     "UserMessageRequest",
+    "Message",
 ]

@@ -81,7 +81,6 @@ class Assistant:
                     thread_id=self.thread.id
                 )
                 message = messages.data[0]
-                print(message)
                 message_content = message.content[0].text.value
                 return message_content
             time.sleep(1)

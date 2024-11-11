@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from typing import List
 
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select, text
 
-from .model import Business, Conversation
+from .model import Business, Conversation, Message
 
 
 @dataclass
@@ -49,3 +50,8 @@ class DatabaseService:
             stmt = select(Conversation).where(Conversation.id == conversation_id)
             conversation = session.exec(stmt).first()
         return conversation
+
+    def insert_messages(self, messages: List[Message]) -> None:
+        with Session(self.engine) as session:
+            session.add_all(messages)
+            session.commit()
