@@ -1,5 +1,11 @@
 from .database import DatabaseService, PostgresCredentials
-from .model import ConversationInitRequest, ConversationInitResponse
+from .model import (
+    ConversationInitRequest,
+    ConversationInitResponse,
+    UserMessageRequest,
+    UserMessageResponse,
+)
+from .openai_service import Assistant, OpenAICredentials
 from .secret_manager import SecretsManager
 
 __all__ = [
@@ -8,4 +14,8 @@ __all__ = [
     "ConversationInitResponse",
     "PostgresCredentials",
     "SecretsManager",
+    "Assistant",
+    "OpenAICredentials",
+    "UserMessageResponse",
+    "UserMessageRequest",
 ]

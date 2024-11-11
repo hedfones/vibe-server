@@ -19,3 +19,12 @@ class ConversationInitResponse(BaseModel):
     """
 
     conversation_id: int
+
+
+class UserMessageRequest(BaseModel):
+    conversation_id: str
+    content: str
+
+
+class UserMessageResponse(BaseModel):
+    content: str

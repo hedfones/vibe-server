@@ -30,16 +30,22 @@ class DatabaseService:
 
         self.engine = engine
 
-    def get_business_by_id(self, business_id: int) -> Business:
+    def get_business_by_id(self, business_id: int) -> Business | None:
         with Session(self.engine) as session:
             stmt = select(Business).where(Business.id == business_id)
             business = session.exec(stmt).first()
         return business
 
-    def create_conversation(self, business: Business) -> Conversation:
+    def create_conversation(self, business: Business, thread_id: str) -> Conversation:
         with Session(self.engine) as session:
-            conversation = Conversation(business_id=business.id)
+            conversation = Conversation(business_id=business.id, thread_id=thread_id)
             session.add(conversation)
             session.commit()
             session.refresh(conversation)
+        return conversation
+
+    def get_conversation_by_id(self, conversation_id: int) -> Conversation | None:
+        with Session(self.engine) as session:
+            stmt = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = session.exec(stmt).first()
         return conversation

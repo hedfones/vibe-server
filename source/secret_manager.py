@@ -37,7 +37,7 @@ class SecretsManager:
             print(f"Warning: {self.env_file} not found. No secrets loaded.")
         return secrets
 
-    def get_secret(self, key: str) -> str | None:
+    def get(self, key: str) -> str | None:
         """Retrieves the value of a secret by its key.
 
         Args:
