@@ -8,6 +8,7 @@ from sqlmodel import Field, Relationship, SQLModel
 class Business(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     manifest: Optional[str] = Field(default=None)  # YAML Manifest
+    assistant_id: str
 
     conversations: List["Conversation"] = Relationship(back_populates="business")
 
@@ -25,6 +26,7 @@ class Business(SQLModel, table=True):
 class Conversation(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
+    thread_id: str
 
     business: "Business" = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation")
@@ -38,7 +40,10 @@ class Message(SQLModel, table=True):
         primary_key=True,
         sa_column_kwargs={"server_default": message_sequence.next_value()},
     )
-    conversation_id: Optional[int] = Field(default=None, foreign_key="conversation.id")
+    conversation_id: Optional[int] = Field(
+        default=None, foreign_key="conversation.id", index=True
+    )
+    role: str
     content: str
 
     conversation: "Conversation" = Relationship(back_populates="messages")
