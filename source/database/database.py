@@ -1,10 +1,22 @@
 from dataclasses import dataclass
-from typing import List
+from datetime import date
+from typing import List, Tuple
 
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select, text
 
-from .model import Business, Conversation, Message
+from .model import (
+    Appointment,
+    Associate,
+    AssociateProductLink,
+    Business,
+    Conversation,
+    Location,
+    LocationProductLink,
+    Message,
+    Product,
+    Schedule,
+)
 
 
 @dataclass
@@ -18,7 +30,10 @@ class PostgresCredentials:
 
 class DatabaseService:
     def __init__(self, credentials: PostgresCredentials) -> None:
-        postgres_url = f"postgresql://{credentials.user}:{credentials.password}@{credentials.host}:{credentials.port}/{credentials.database}"
+        postgres_url = (
+            f"postgresql://{credentials.user}:{credentials.password}@{credentials.host}:{credentials.port}"
+            f"/{credentials.database}"
+        )
         engine = create_engine(postgres_url)
 
         # create all sequences ahead of time
@@ -55,3 +70,46 @@ class DatabaseService:
         with Session(self.engine) as session:
             session.add_all(messages)
             session.commit()
+
+    def get_associates_by_location_product(
+        self, location: Location, product: Product
+    ) -> List[Associate]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Associate)
+                .join(
+                    AssociateProductLink,
+                    AssociateProductLink.associate_id == Associate.id,
+                )
+                .join(
+                    LocationProductLink,
+                    LocationProductLink.product_id == AssociateProductLink.product_id,
+                )
+                .where(
+                    LocationProductLink.location_id == location.id,
+                    AssociateProductLink.product_id == product.id,
+                )
+            )
+            associates = session.exec(stmt).all()
+
+            return list(associates)
+
+    def get_schedules_appointments_by_location_associate(
+        self, location_id: int, associate_id: int
+    ) -> List[Tuple[Schedule, Appointment]]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Schedule, Appointment)
+                .join(Appointment, Appointment.associate_id == Schedule.associate_id)
+                .where(
+                    Schedule.associate_id == associate_id,
+                    Schedule.location_id == location_id,
+                    Appointment.date >= date.today(),
+                    Appointment.start_time >= Schedule.start_time,
+                    Appointment.end_time <= Schedule.end_time,
+                    Appointment.date.weekday() == Schedule.day_of_week,
+                )
+            )
+            results = session.exec(stmt).all()
+
+            return list(results)
