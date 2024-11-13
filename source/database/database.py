@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from datetime import date
-from typing import List, Tuple
+from typing import List, Tuple, Type
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, desc, func
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
@@ -105,9 +105,15 @@ class DatabaseService:
                     Appointment.date >= date.today(),
                     Appointment.start_time >= Schedule.start_time,
                     Appointment.end_time <= Schedule.end_time,
-                    Appointment.date.weekday() == Schedule.day_of_week,
+                    func.extract("dow", Appointment.date) == Schedule.day_of_week,
                 )
             )
             results = session.exec(stmt).all()
 
+            return list(results)
+
+    def select_by_id(self, Table: Type[SQLModel], id: int) -> List[SQLModel]:
+        with Session(self.engine) as session:
+            stmt = select(Table).where(Table.id == id).order_by(desc(Table.created_at))
+            results = session.exec(stmt).all()
             return list(results)

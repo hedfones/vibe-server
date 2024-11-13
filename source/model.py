@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import List
+
 from pydantic import BaseModel
 
 
@@ -28,3 +31,22 @@ class UserMessageRequest(BaseModel):
 
 class UserMessageResponse(BaseModel):
     content: str
+
+
+class GetAvailabilityRequest(BaseModel):
+    location_id: int
+    product_id: int
+
+
+class AvailabilityWindow(BaseModel):
+    start_time: datetime
+    end_time: datetime
+
+    @property
+    def duration_minutes(self) -> float:
+        timedelta = self.end_time - self.start_time
+        return abs(timedelta.total_seconds()) // 60
+
+
+class GetAvailabilityResponse(BaseModel):
+    availability_windows: List[AvailabilityWindow]

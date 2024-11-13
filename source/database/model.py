@@ -1,8 +1,8 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from typing import List, Optional
 
 import yaml
-from sqlalchemy import Sequence
+from sqlalchemy import Column, DateTime, Sequence, func
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -10,6 +10,9 @@ class Business(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     manifest: Optional[str] = Field(default=None)  # YAML Manifest
     assistant_id: str
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     conversations: List["Conversation"] = Relationship(back_populates="business")
     products: List["Product"] = Relationship(back_populates="business")
@@ -31,6 +34,9 @@ class Conversation(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     thread_id: str
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     business: "Business" = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation")
@@ -49,6 +55,9 @@ class Message(SQLModel, table=True):
     )
     role: str
     content: str
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     conversation: "Conversation" = Relationship(back_populates="messages")
 
@@ -56,6 +65,9 @@ class Message(SQLModel, table=True):
 class Associate(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     business: "Business" = Relationship(back_populates="associates")
     schedules: List["Schedule"] = Relationship(back_populates="associate")
@@ -65,6 +77,9 @@ class Associate(SQLModel, table=True):
 class Location(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     business: "Business" = Relationship(back_populates="locations")
     schedules: List["Schedule"] = Relationship(back_populates="location")
@@ -74,6 +89,9 @@ class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     duration_minutes: int
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     business: "Business" = Relationship(back_populates="products")
 
@@ -92,6 +110,9 @@ class LocationProductLink(SQLModel, table=True):
     product_id: Optional[int] = Field(
         default=None, foreign_key="product.id", primary_key=True
     )
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
 
 class AssociateProductLink(SQLModel, table=True):
@@ -108,6 +129,9 @@ class AssociateProductLink(SQLModel, table=True):
     product_id: Optional[int] = Field(
         default=None, foreign_key="product.id", primary_key=True
     )
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
 
 class Schedule(SQLModel, table=True):
@@ -121,6 +145,9 @@ class Schedule(SQLModel, table=True):
     day_of_week: int = Field(
         description="Day of the week as an integer, 0=Monday ... 6=Sunday"
     )
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     associate: "Associate" = Relationship(back_populates="schedules")
     location: "Location" = Relationship(back_populates="schedules")
@@ -132,5 +159,8 @@ class Appointment(SQLModel, table=True):
     date: date
     start_time: time
     end_time: time
+    created_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
 
     associate: "Associate" = Relationship(back_populates="appointments")

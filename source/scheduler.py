@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Tuple
 
@@ -6,17 +5,7 @@ from .database import (
     Associate,
     DatabaseService,
 )
-
-
-@dataclass
-class AvailabilityWindow:
-    start_time: datetime
-    end_time: datetime
-
-    @property
-    def duration_minutes(self) -> float:
-        timedelta = self.end_time - self.start_time
-        return abs(timedelta.total_seconds()) // 60
+from .model import AvailabilityWindow
 
 
 class Scheduler:
@@ -26,8 +15,10 @@ class Scheduler:
     def split_window(
         self, window: AvailabilityWindow, start_dt: datetime, end_dt: datetime
     ) -> Tuple[AvailabilityWindow, AvailabilityWindow]:
-        before_window = AvailabilityWindow(window.start_time, start_dt)
-        after_window = AvailabilityWindow(end_dt, window.end_time)
+        before_window = AvailabilityWindow(
+            start_time=window.start_time, end_time=start_dt
+        )
+        after_window = AvailabilityWindow(start_time=end_dt, end_time=window.end_time)
         return before_window, after_window
 
     def get_associate_available_windows(
@@ -42,7 +33,9 @@ class Scheduler:
             if schedule.id not in windows:
                 start_dt = datetime.combine(appointment.date, schedule.start_time)
                 end_dt = datetime.combine(appointment.date, schedule.end_time)
-                windows[schedule.id] = [AvailabilityWindow(start_dt, end_dt)]
+                windows[schedule.id] = [
+                    AvailabilityWindow(start_time=start_dt, end_time=end_dt)
+                ]
 
             start_dt = datetime.combine(appointment.date, appointment.start_time)
             end_dt = datetime.combine(appointment.date, appointment.end_time)
