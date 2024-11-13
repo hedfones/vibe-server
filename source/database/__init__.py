@@ -1,5 +1,14 @@
 from .database import DatabaseService, PostgresCredentials
-from .model import Business, Conversation, Message
+from .model import (
+    Appointment,
+    Associate,
+    Business,
+    Conversation,
+    Location,
+    Message,
+    Product,
+    Schedule,
+)
 
 __all__ = [
     "DatabaseService",
@@ -7,4 +16,9 @@ __all__ = [
     "Conversation",
     "Message",
     "PostgresCredentials",
+    "Associate",
+    "Appointment",
+    "Schedule",
+    "Product",
+    "Location",
 ]

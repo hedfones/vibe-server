@@ -11,10 +11,8 @@ from .model import (
     AssociateProductLink,
     Business,
     Conversation,
-    Location,
     LocationProductLink,
     Message,
-    Product,
     Schedule,
 )
 
@@ -72,7 +70,7 @@ class DatabaseService:
             session.commit()
 
     def get_associates_by_location_product(
-        self, location: Location, product: Product
+        self, location_id: int, product_id: int
     ) -> List[Associate]:
         with Session(self.engine) as session:
             stmt = (
@@ -86,8 +84,8 @@ class DatabaseService:
                     LocationProductLink.product_id == AssociateProductLink.product_id,
                 )
                 .where(
-                    LocationProductLink.location_id == location.id,
-                    AssociateProductLink.product_id == product.id,
+                    LocationProductLink.location_id == location_id,
+                    AssociateProductLink.product_id == product_id,
                 )
             )
             associates = session.exec(stmt).all()

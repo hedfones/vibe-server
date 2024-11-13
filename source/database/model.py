@@ -59,7 +59,7 @@ class Associate(SQLModel, table=True):
 
     business: "Business" = Relationship(back_populates="associates")
     schedules: List["Schedule"] = Relationship(back_populates="associate")
-    appointments: List["Schedule"] = Relationship(back_populates="associate")
+    appointments: List["Appointment"] = Relationship(back_populates="associate")
 
 
 class Location(SQLModel, table=True):

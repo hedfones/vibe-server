@@ -1,0 +1,81 @@
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Tuple
+
+from .database import (
+    Associate,
+    DatabaseService,
+)
+
+
+@dataclass
+class AvailabilityWindow:
+    start_time: datetime
+    end_time: datetime
+
+    @property
+    def duration_minutes(self) -> float:
+        timedelta = self.end_time - self.start_time
+        return abs(timedelta.total_seconds()) // 60
+
+
+class Scheduler:
+    def __init__(self, db: DatabaseService) -> None:
+        self.db = db
+
+    def split_window(
+        self, window: AvailabilityWindow, start_dt: datetime, end_dt: datetime
+    ) -> Tuple[AvailabilityWindow, AvailabilityWindow]:
+        before_window = AvailabilityWindow(window.start_time, start_dt)
+        after_window = AvailabilityWindow(end_dt, window.end_time)
+        return before_window, after_window
+
+    def get_associate_available_windows(
+        self, associate_id: int, location_id: int, product_duration_minutes: int
+    ) -> List[AvailabilityWindow]:
+        windows: Dict[int, List[AvailabilityWindow]] = {}
+
+        appointments = self.db.get_schedules_appointments_by_location_associate(
+            location_id, associate_id
+        )
+        for schedule, appointment in appointments:
+            if schedule.id not in windows:
+                start_dt = datetime.combine(appointment.date, schedule.start_time)
+                end_dt = datetime.combine(appointment.date, schedule.end_time)
+                windows[schedule.id] = [AvailabilityWindow(start_dt, end_dt)]
+
+            start_dt = datetime.combine(appointment.date, appointment.start_time)
+            end_dt = datetime.combine(appointment.date, appointment.end_time)
+
+            for i, window in enumerate(windows[schedule.id]):
+                if window.start_time <= start_dt and end_dt <= window.end_time:
+                    new_windows = self.split_window(window, start_dt, end_dt)
+                    new_windows = [
+                        w
+                        for w in new_windows
+                        if w.duration_minutes >= product_duration_minutes
+                    ]
+
+                    windows[schedule.id].pop(i)
+                    windows[schedule.id].extend(new_windows)
+
+        window_list = []
+        for sublist in windows.values():
+            window_list.extend(sublist)
+        return window_list
+
+    def get_availabilities(
+        self, product_id: int, product_duration_minutes: int, location_id: int
+    ) -> List[Tuple[Associate, List[AvailabilityWindow]]]:
+        associates = self.db.get_associates_by_location_product(location_id, product_id)
+
+        results = []
+
+        # TODO: Handle duplicate associates
+        for associate in associates:
+            availability = self.get_associate_available_windows(
+                associate.id, location_id, product_duration_minutes
+            )
+            results.append((associate, availability))
+
+        return results

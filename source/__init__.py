@@ -6,6 +6,7 @@ from .model import (
     UserMessageResponse,
 )
 from .openai_service import Assistant, OpenAICredentials
+from .scheduler import AvailabilityWindow, Scheduler
 from .secret_manager import SecretsManager
 
 __all__ = [
@@ -19,4 +20,6 @@ __all__ = [
     "UserMessageResponse",
     "UserMessageRequest",
     "Message",
+    "Scheduler",
+    "AvailabilityWindow",
 ]

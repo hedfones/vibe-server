@@ -73,7 +73,9 @@ def test_retrieve_response_success(assistant_instance):
     assistant_instance.client.beta.threads.runs.create_and_poll.return_value = mock_run
 
     mock_message = MagicMock()
-    mock_message.content = "Hello user!"
+    mock_message.content = [
+        MagicMock(text=MagicMock(value="Hello user!"))
+    ]  # Matching the expected structure
     assistant_instance.client.beta.threads.messages.list.return_value.data = [
         mock_message
     ]
