@@ -113,7 +113,6 @@ def get_availability(payload: GetAvailabilityRequest) -> GetAvailabilityResponse
             "Unable to find availabilities associated with location "
             f"`{payload.location_id}` and product `{product.id}`.",
         )
-    _, windows = tuple(zip(*availabilities))
 
-    response = GetAvailabilityResponse(availability_windows=windows)
+    response = GetAvailabilityResponse(availability_windows=availabilities)
     return response

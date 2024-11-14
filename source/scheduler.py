@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Dict, List, Tuple
 
 from .database import (
-    Associate,
     DatabaseService,
 )
 from .model import AvailabilityWindow
@@ -55,11 +54,14 @@ class Scheduler:
         window_list = []
         for sublist in windows.values():
             window_list.extend(sublist)
+
+        for window in window_list:
+            window.associate_id = associate_id
         return window_list
 
     def get_availabilities(
         self, product_id: int, product_duration_minutes: int, location_id: int
-    ) -> List[Tuple[Associate, List[AvailabilityWindow]]]:
+    ) -> List[AvailabilityWindow]:
         associates = self.db.get_associates_by_location_product(location_id, product_id)
 
         results = []
@@ -69,6 +71,6 @@ class Scheduler:
             availability = self.get_associate_available_windows(
                 associate.id, location_id, product_duration_minutes
             )
-            results.append((associate, availability))
+            results.extend(availability)
 
         return results

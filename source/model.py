@@ -41,6 +41,7 @@ class GetAvailabilityRequest(BaseModel):
 class AvailabilityWindow(BaseModel):
     start_time: datetime
     end_time: datetime
+    associate_id: int | None = None
 
     @property
     def duration_minutes(self) -> float:
