@@ -48,6 +48,15 @@ class AvailabilityWindow(BaseModel):
         timedelta = self.end_time - self.start_time
         return abs(timedelta.total_seconds()) // 60
 
+    def __str__(self) -> str:
+        return (
+            "Availability Window:\n"
+            f"\tDate: {self.start_time.strftime('%A, %B %d, %Y')}\n"
+            f"\tStart Time: {self.start_time.strftime('%H:%M:%S')}\n"
+            f"\tEnd Time: {self.end_time.strftime('%H:%M:%S')}\n"
+            f"\tAssociate ID: {self.associate_id}"
+        )
+
 
 class GetAvailabilityResponse(BaseModel):
     availability_windows: List[AvailabilityWindow]
