@@ -3,6 +3,8 @@ from typing import List
 
 from pydantic import BaseModel
 
+from .database import Message
+
 
 class ConversationInitRequest(BaseModel):
     """Request model for initializing a conversation.
@@ -22,6 +24,7 @@ class ConversationInitResponse(BaseModel):
     """
 
     conversation_id: int
+    message: Message
 
 
 class UserMessageRequest(BaseModel):
@@ -30,7 +33,7 @@ class UserMessageRequest(BaseModel):
 
 
 class UserMessageResponse(BaseModel):
-    content: str
+    message: Message
 
 
 class GetAvailabilityRequest(BaseModel):

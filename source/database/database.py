@@ -69,6 +69,9 @@ class DatabaseService:
             session.add_all(messages)
             session.commit()
 
+            for message in messages:
+                session.refresh(message)
+
     def get_associates_by_location_product(
         self, location_id: int, product_id: int
     ) -> List[Associate]:

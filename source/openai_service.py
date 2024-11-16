@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
@@ -21,6 +22,9 @@ class AssistantMessage(TypedDict):
     role: Literal["assistant", "user"]
     content: str
 
+class ToolOutput(TypedDict):
+    tool_output_id: str
+    output: str
 
 class Assistant:
     def __init__(
@@ -64,16 +68,17 @@ class Assistant:
         """
         self.client.beta.threads.messages.create(thread_id=self.thread.id, **message)
 
-    def get_tool_outputs(self, run: Run) -> List[dict]:
+    def get_tool_outputs(self, run: Run) -> List[ToolOutput]:
         # Define the list to store tool outputs
         tool_outputs = []
 
-        if not run.required_action:
+        if run.required_action is None:
+            logging.warning("No required action detected for run.")
             return tool_outputs
 
         # Loop through each tool in the required action section
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            if tool.function.name == "get_availability":
+            if tool.function.name == "check_availability":
                 arguments = json.loads(tool.function.arguments)
                 availability = get_availability(**arguments)
                 body = "\n".join(map(str, availability))

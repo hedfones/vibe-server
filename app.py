@@ -53,9 +53,26 @@ def initialize_conversation(
     business = db.get_business_by_id(payload.business_id)
     if not business:
         raise HTTPException(403, f"Business with ID {payload.business_id} not found.")
+
+    # create thread
     assistant = Assistant(openai_creds, business.assistant_id)
     conversation = db.create_conversation(business, assistant.thread.id)
-    response = ConversationInitResponse(conversation_id=conversation.id)
+
+    # get first message from assistant
+    # TODO: in future, this intro message should be a static first message for
+    #   each assistant
+    assistant_first_message = Message(
+        conversation_id=conversation.id,
+        role="assistant",
+        content=assistant.retrieve_response(),
+    )
+    db.insert_messages([assistant_first_message])
+
+    # return response
+    response = ConversationInitResponse(
+        conversation_id=conversation.id,
+        message=assistant_first_message
+    )
     return response
 
 
@@ -93,7 +110,7 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
 
     db.insert_messages(new_messages)
 
-    response = UserMessageResponse(content=message_response)
+    response = UserMessageResponse(message=new_messages[-1])
     return response
 
 

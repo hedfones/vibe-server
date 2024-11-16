@@ -3,6 +3,15 @@ from datetime import date, datetime, time, timedelta
 
 from sqlmodel import Session, select
 
+import sys
+import os
+
+# Get the parent directory
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# Add the parent directory to sys.path
+sys.path.append(parent_dir)
+
 from source import (
     DatabaseService,
     PostgresCredentials,
@@ -24,6 +33,7 @@ secrets = SecretsManager("./.env")
 db_creds = PostgresCredentials(
     user=secrets.get("POSTGRES_USER"),
     password=secrets.get("POSTGRES_PASSWORD"),
+    database=secrets.get("POSTGRES_DB"),
 )
 db = DatabaseService(db_creds)
 
