@@ -77,6 +77,7 @@ class Associate(SQLModel, table=True):
 class Location(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
+    description: str
     created_at: Optional[datetime] = Field(
         sa_column=Column(DateTime, server_default=func.now())
     )  # Creation date
@@ -89,6 +90,8 @@ class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     duration_minutes: int
+    description: str
+    booking_fee: float
     created_at: Optional[datetime] = Field(
         sa_column=Column(DateTime, server_default=func.now())
     )  # Creation date

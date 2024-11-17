@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from pydantic import BaseModel
 
@@ -36,11 +35,6 @@ class UserMessageResponse(BaseModel):
     message: Message
 
 
-class GetAvailabilityRequest(BaseModel):
-    location_id: int
-    product_id: int
-
-
 class AvailabilityWindow(BaseModel):
     start_time: datetime
     end_time: datetime
@@ -59,7 +53,3 @@ class AvailabilityWindow(BaseModel):
             f"\tEnd Time: {self.end_time.strftime('%H:%M:%S')}\n"
             f"\tAssociate ID: {self.associate_id}"
         )
-
-
-class GetAvailabilityResponse(BaseModel):
-    availability_windows: List[AvailabilityWindow]

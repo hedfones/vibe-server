@@ -3,8 +3,6 @@ from .model import (
     AvailabilityWindow,
     ConversationInitRequest,
     ConversationInitResponse,
-    GetAvailabilityRequest,
-    GetAvailabilityResponse,
     UserMessageRequest,
     UserMessageResponse,
 )
@@ -25,7 +23,5 @@ __all__ = [
     "Message",
     "Scheduler",
     "AvailabilityWindow",
-    "GetAvailabilityRequest",
-    "GetAvailabilityResponse",
     "Product",
 ]

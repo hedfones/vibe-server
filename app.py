@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import FastAPI, HTTPException
 
 from source import (
@@ -7,12 +5,9 @@ from source import (
     ConversationInitRequest,
     ConversationInitResponse,
     DatabaseService,
-    GetAvailabilityRequest,
-    GetAvailabilityResponse,
     Message,
     OpenAICredentials,
     PostgresCredentials,
-    Product,
     Scheduler,
     SecretsManager,
     UserMessageRequest,
@@ -70,8 +65,7 @@ def initialize_conversation(
 
     # return response
     response = ConversationInitResponse(
-        conversation_id=conversation.id,
-        message=assistant_first_message
+        conversation_id=conversation.id, message=assistant_first_message
     )
     return response
 
@@ -111,25 +105,4 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     db.insert_messages(new_messages)
 
     response = UserMessageResponse(message=new_messages[-1])
-    return response
-
-
-@app.post("/get-availability/", response_model=GetAvailabilityResponse)
-def get_availability(payload: GetAvailabilityRequest) -> GetAvailabilityResponse:
-    products: List[Product] = db.select_by_id(Product, payload.product_id)
-    product = products.pop(0)
-    if not product:
-        raise HTTPException(403, f"Unable to find product by id `{payload.product_id}`")
-
-    availabilities = scheduler.get_availabilities(
-        product.id, product.duration_minutes, payload.location_id
-    )
-    if not availabilities:
-        raise HTTPException(
-            403,
-            "Unable to find availabilities associated with location "
-            f"`{payload.location_id}` and product `{product.id}`.",
-        )
-
-    response = GetAvailabilityResponse(availability_windows=availabilities)
     return response
