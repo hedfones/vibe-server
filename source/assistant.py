@@ -22,9 +22,11 @@ class AssistantMessage(TypedDict):
     role: Literal["assistant", "user"]
     content: str
 
+
 class ToolOutput(TypedDict):
     tool_output_id: str
     output: str
+
 
 class Assistant:
     def __init__(
