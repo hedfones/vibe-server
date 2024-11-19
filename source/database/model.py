@@ -8,7 +8,6 @@ from sqlmodel import Field, Relationship, SQLModel
 
 class Business(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    manifest: Optional[str] = Field(default=None)  # YAML Manifest
     assistant_id: str
     created_at: Optional[datetime] = Field(
         sa_column=Column(DateTime, server_default=func.now())

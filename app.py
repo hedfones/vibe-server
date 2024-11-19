@@ -4,24 +4,17 @@ from source import (
     Assistant,
     ConversationInitRequest,
     ConversationInitResponse,
-    DatabaseService,
     Message,
     OpenAICredentials,
-    PostgresCredentials,
     Scheduler,
     SecretsManager,
     UserMessageRequest,
     UserMessageResponse,
+    db,
 )
 
 app = FastAPI()
 secrets = SecretsManager("./.env")
-
-db_creds = PostgresCredentials(
-    user=secrets.get("POSTGRES_USER"),
-    password=secrets.get("POSTGRES_PASSWORD"),
-)
-db = DatabaseService(db_creds)
 
 openai_creds = OpenAICredentials(
     api_key=secrets.get("OPENAI_API_KEY"),

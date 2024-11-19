@@ -21,9 +21,9 @@ from .model import (
 class PostgresCredentials:
     user: str
     password: str
-    database: str = "database"
-    host: str = "localhost"
-    port: int = 5432
+    database: str
+    host: str
+    port: int
 
 
 class DatabaseService:

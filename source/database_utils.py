@@ -12,6 +12,9 @@ secrets = SecretsManager("./.env")
 db_creds = PostgresCredentials(
     user=secrets.get("POSTGRES_USER"),
     password=secrets.get("POSTGRES_PASSWORD"),
+    database=secrets.get("POSTGRES_DB"),
+    host=secrets.get("POSTGRES_HOST"),
+    port=secrets.get("POSTGRES_PORT"),
 )
 db = DatabaseService(db_creds)
 

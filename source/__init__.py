@@ -1,5 +1,6 @@
 from .assistant import Assistant, OpenAICredentials
 from .database import DatabaseService, Message, PostgresCredentials, Product
+from .database_utils import db
 from .model import (
     AvailabilityWindow,
     ConversationInitRequest,
@@ -24,4 +25,5 @@ __all__ = [
     "Scheduler",
     "AvailabilityWindow",
     "Product",
+    "db",
 ]
