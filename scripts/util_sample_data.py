@@ -8,24 +8,24 @@ from sqlmodel import Session, select
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 
+from source import (
+    DatabaseService,
+    PostgresCredentials,
+    SecretsManager,
+)
+from source.database.model import (
+    Appointment,
+    Associate,
+    AssociateProductLink,
+    Business,
+    Location,
+    LocationProductLink,
+    Product,
+    Schedule,
+)
+
 
 def main():
-    from source import (
-        DatabaseService,
-        PostgresCredentials,
-        SecretsManager,
-    )
-    from source.database.model import (
-        Appointment,
-        Associate,
-        AssociateProductLink,
-        Business,
-        Location,
-        LocationProductLink,
-        Product,
-        Schedule,
-    )
-
     secrets = SecretsManager("./.env")
 
     db_creds = PostgresCredentials(
