@@ -3,3 +3,4 @@ ruff
 isort
 pre-commit
 pytest
+python-lsp-server

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import date
-from typing import List, Tuple, Type
 
 from sqlalchemy import create_engine, desc, func
 from sqlmodel import Session, SQLModel, select, text
@@ -11,8 +10,10 @@ from .model import (
     AssociateProductLink,
     Business,
     Conversation,
+    Location,
     LocationProductLink,
     Message,
+    Product,
     Schedule,
 )
 
@@ -64,7 +65,7 @@ class DatabaseService:
             conversation = session.exec(stmt).first()
         return conversation
 
-    def insert_messages(self, messages: List[Message]) -> None:
+    def insert_messages(self, messages: list[Message]) -> None:
         with Session(self.engine) as session:
             session.add_all(messages)
             session.commit()
@@ -74,7 +75,7 @@ class DatabaseService:
 
     def get_associates_by_location_product(
         self, location_id: int, product_id: int
-    ) -> List[Associate]:
+    ) -> list[Associate]:
         with Session(self.engine) as session:
             stmt = (
                 select(Associate)
@@ -97,7 +98,7 @@ class DatabaseService:
 
     def get_schedules_appointments_by_location_associate(
         self, location_id: int, associate_id: int
-    ) -> List[Tuple[Schedule, Appointment]]:
+    ) -> list[tuple[Schedule, Appointment]]:
         with Session(self.engine) as session:
             stmt = (
                 select(Schedule, Appointment)
@@ -108,15 +109,36 @@ class DatabaseService:
                     Appointment.date >= date.today(),
                     Appointment.start_time >= Schedule.start_time,
                     Appointment.end_time <= Schedule.end_time,
-                    func.extract("dow", Appointment.date) == Schedule.day_of_week,
+                    ((func.extract("dow", Appointment.date) + 6) % 7)
+                    == Schedule.day_of_week,
                 )
             )
             results = session.exec(stmt).all()
 
             return list(results)
 
-    def select_by_id(self, Table: Type[SQLModel], id: int) -> List[SQLModel]:
+    def select_by_id(self, Table: type[SQLModel], id: int) -> list[SQLModel]:
         with Session(self.engine) as session:
             stmt = select(Table).where(Table.id == id).order_by(desc(Table.created_at))
             results = session.exec(stmt).all()
             return list(results)
+
+    def get_locations_by_product_id(self, product_id: int) -> list[Location]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Location)
+                .join(LocationProductLink)
+                .where(LocationProductLink.product_id == product_id)
+            )
+            results = session.exec(stmt).all()
+        return list(results)
+
+    def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Product)
+                .join(Business)
+                .where(Business.assistant_id == assistant_id)
+            )
+            results = session.exec(stmt).all()
+        return list(results)

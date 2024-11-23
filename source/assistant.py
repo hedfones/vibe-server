@@ -3,12 +3,14 @@ import logging
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import List, Literal, TypedDict
+from typing import Literal, TypedDict
 
 from openai import OpenAI
+from openai.types.beta import assistant, thread
 from openai.types.beta.threads import Run
+from openai.types.beta.threads.run_submit_tool_outputs_params import ToolOutput
 
-from .database_utils import get_availability
+from .database_utils import get_availability, get_product_list, get_product_locations
 
 
 @dataclass
@@ -21,11 +23,6 @@ class OpenAICredentials:
 class AssistantMessage(TypedDict):
     role: Literal["assistant", "user"]
     content: str
-
-
-class ToolOutput(TypedDict):
-    tool_output_id: str
-    output: str
 
 
 class Assistant:
@@ -43,9 +40,14 @@ class Assistant:
             assistant_id (str): The ID of the assistant to be used.
             thread_id (str | None): The ID of the thread to retrieve or create a new one if None.
         """
-        self.client = OpenAI(**asdict(credentials))
-        self.assistant = self.client.beta.assistants.retrieve(assistant_id)
+        self.assistant_id: str = assistant_id
 
+        self.client: OpenAI = OpenAI(**asdict(credentials))
+        self.assistant: assistant.Assistant = self.client.beta.assistants.retrieve(
+            assistant_id
+        )
+
+        self.thread: thread.Thread
         if thread_id:
             self.thread = self.client.beta.threads.retrieve(thread_id)
         else:
@@ -68,11 +70,14 @@ class Assistant:
         Args:
             message (AssistantMessage): The message to be added.
         """
-        self.client.beta.threads.messages.create(thread_id=self.thread.id, **message)
+        _ = self.client.beta.threads.messages.create(
+            thread_id=self.thread.id, **message
+        )
+        return
 
-    def get_tool_outputs(self, run: Run) -> List[ToolOutput]:
+    def get_tool_outputs(self, run: Run) -> list[ToolOutput]:
         # Define the list to store tool outputs
-        tool_outputs = []
+        tool_outputs: list[ToolOutput] = []
 
         if run.required_action is None:
             logging.warning("No required action detected for run.")
@@ -80,11 +85,26 @@ class Assistant:
 
         # Loop through each tool in the required action section
         for tool in run.required_action.submit_tool_outputs.tool_calls:
+            logging.info(
+                f"Running tool {tool.function.name} with arguments {tool.function.arguments}"
+            )
+            arguments: dict[str, int] = {}
+            if argument_string := tool.function.arguments:
+                arguments = json.loads(argument_string)
+
             if tool.function.name == "check_availability":
-                arguments = json.loads(tool.function.arguments)
                 availability = get_availability(**arguments)
                 body = "\n".join(map(str, availability))
-                tool_outputs.append({"tool_call_id": tool.id, "output": body})
+            elif tool.function.name == "get_product_locations":
+                body = get_product_locations(**arguments)
+            elif tool.function.name == "get_product_list":
+                body = get_product_list(self.assistant_id)
+            else:
+                raise Exception(
+                    "Unexpected tool function called: {}".format(tool.function.name)
+                )
+
+            tool_outputs.append({"tool_call_id": tool.id, "output": body})
 
         return tool_outputs
 
@@ -103,7 +123,7 @@ class Assistant:
                 thread_id=self.thread.id, assistant_id=self.assistant.id
             )
 
-        timeout_timestamp = datetime.now() + timedelta(seconds=15)
+        timeout_timestamp = datetime.now() + timedelta(seconds=30)
         while datetime.now() < timeout_timestamp:
             if run.status == "completed":
                 messages = self.client.beta.threads.messages.list(
@@ -117,8 +137,7 @@ class Assistant:
                 run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(
                     thread_id=self.thread.id, run_id=run.id, tool_outputs=tool_outputs
                 )
-                return self.retrieve_response(run)
             else:
-                print(run.status)
-            time.sleep(1)
+                logging.warning(f"{run.status=}")
+            time.sleep(0.25)
         raise TimeoutError("Assistant took too long to respond.")

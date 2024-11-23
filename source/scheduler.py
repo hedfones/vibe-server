@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Dict, List, Tuple
 
 from .database import (
     DatabaseService,
@@ -9,11 +8,11 @@ from .model import AvailabilityWindow
 
 class Scheduler:
     def __init__(self, db: DatabaseService) -> None:
-        self.db = db
+        self.db: DatabaseService = db
 
     def split_window(
         self, window: AvailabilityWindow, start_dt: datetime, end_dt: datetime
-    ) -> Tuple[AvailabilityWindow, AvailabilityWindow]:
+    ) -> tuple[AvailabilityWindow, AvailabilityWindow]:
         before_window = AvailabilityWindow(
             start_time=window.start_time, end_time=start_dt
         )
@@ -22,8 +21,8 @@ class Scheduler:
 
     def get_associate_available_windows(
         self, associate_id: int, location_id: int, product_duration_minutes: int
-    ) -> List[AvailabilityWindow]:
-        windows: Dict[int, List[AvailabilityWindow]] = {}
+    ) -> list[AvailabilityWindow]:
+        windows: dict[int, list[AvailabilityWindow]] = {}
 
         appointments = self.db.get_schedules_appointments_by_location_associate(
             location_id, associate_id
@@ -48,10 +47,10 @@ class Scheduler:
                         if w.duration_minutes >= product_duration_minutes
                     ]
 
-                    windows[schedule.id].pop(i)
+                    _ = windows[schedule.id].pop(i)
                     windows[schedule.id].extend(new_windows)
 
-        window_list = []
+        window_list: list[AvailabilityWindow] = []
         for sublist in windows.values():
             window_list.extend(sublist)
 
@@ -61,10 +60,10 @@ class Scheduler:
 
     def get_availabilities(
         self, product_id: int, product_duration_minutes: int, location_id: int
-    ) -> List[AvailabilityWindow]:
+    ) -> list[AvailabilityWindow]:
         associates = self.db.get_associates_by_location_product(location_id, product_id)
 
-        results = []
+        results: list[AvailabilityWindow] = []
 
         # TODO: Handle duplicate associates
         for associate in associates:

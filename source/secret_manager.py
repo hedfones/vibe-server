@@ -9,7 +9,7 @@ class SecretsManager:
         secrets (dict): A dictionary containing the loaded secrets.
     """
 
-    def __init__(self, env_file: PathLike = ".envrc"):
+    def __init__(self, env_file: PathLike | str = ".envrc"):
         """Initializes SecretsManager with the specified environment file.
 
         Args:

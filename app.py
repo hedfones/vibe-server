@@ -1,4 +1,7 @@
-from fastapi import FastAPI, HTTPException
+import logging
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from source import (
     Assistant,
@@ -17,12 +20,26 @@ app = FastAPI()
 secrets = SecretsManager("./.env")
 
 openai_creds = OpenAICredentials(
-    api_key=secrets.get("OPENAI_API_KEY"),
-    project=secrets.get("OPENAI_PROJECT_ID"),
-    organization=secrets.get("OPENAI_ORGANIZATION_ID"),
+    api_key=secrets.get("OPENAI_API_KEY") or "",
+    project=secrets.get("OPENAI_PROJECT_ID") or "",
+    organization=secrets.get("OPENAI_ORGANIZATION_ID") or "",
 )
 
 scheduler = Scheduler(db)
+
+logging.basicConfig(level=logging.INFO)
+
+
+@app.exception_handler(HTTPException)
+def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
+    # Log the detailed error message
+    logging.error(f"HTTP Exception: {exc.detail} (status code: {exc.status_code})")
+
+    # Return the original error response
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 
 @app.post("/initialize-conversation/", response_model=ConversationInitResponse)
@@ -36,11 +53,11 @@ def initialize_conversation(
 
     Returns a response containing the conversation ID if successful.
 
-    Raises HTTP 403 if the business with the provided ID is not found.
+    Raises HTTP 404 if the business with the provided ID is not found.
     """
     business = db.get_business_by_id(payload.business_id)
     if not business:
-        raise HTTPException(403, f"Business with ID {payload.business_id} not found.")
+        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
 
     # create thread
     assistant = Assistant(openai_creds, business.assistant_id)
@@ -52,7 +69,7 @@ def initialize_conversation(
     assistant_first_message = Message(
         conversation_id=conversation.id,
         role="assistant",
-        content=assistant.retrieve_response(),
+        content=business.start_message,
     )
     db.insert_messages([assistant_first_message])
 
@@ -72,14 +89,15 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
 
     Returns a response containing the assistant's reply.
 
-    Raises HTTP 403 if the conversation with the provided ID is not found.
+    Raises HTTP 404 if the conversation with the provided ID is not found.
     """
-    new_messages = []
+    new_messages: list[Message] = []
     conversation = db.get_conversation_by_id(payload.conversation_id)
     if not conversation:
         raise HTTPException(
-            403, f"Conversation with ID {payload.conversation_id} not found."
+            404, f"Conversation with ID {payload.conversation_id} not found."
         )
+
     business = db.get_business_by_id(conversation.business_id)
     new_messages.append(
         Message(conversation_id=conversation.id, role="user", content=payload.content)
