@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from source import (
     Assistant,
+    AssistantMessage,
     ConversationInitRequest,
     ConversationInitResponse,
     Message,
@@ -99,12 +100,16 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
         )
 
     business = db.get_business_by_id(conversation.business_id)
+    if not business:
+        raise HTTPException(
+            404, f"Business with ID {conversation.business_id} not found."
+        )
     new_messages.append(
         Message(conversation_id=conversation.id, role="user", content=payload.content)
     )
 
     assistant = Assistant(openai_creds, business.assistant_id, conversation.thread_id)
-    message = {"role": "user", "content": payload.content}
+    message: AssistantMessage = {"role": "user", "content": payload.content}
     assistant.add_message(message)
     message_response = assistant.retrieve_response()
     new_messages.append(

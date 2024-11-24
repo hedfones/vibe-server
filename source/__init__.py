@@ -1,4 +1,4 @@
-from .assistant import Assistant, OpenAICredentials
+from .assistant import Assistant, AssistantMessage, OpenAICredentials
 from .database import DatabaseService, Message, PostgresCredentials, Product
 from .database_utils import db
 from .model import (
@@ -26,4 +26,5 @@ __all__ = [
     "AvailabilityWindow",
     "Product",
     "db",
+    "AssistantMessage",
 ]

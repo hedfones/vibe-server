@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import create_engine, desc, func
+from sqlalchemy import Engine, create_engine, desc, func
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
@@ -38,12 +38,12 @@ class DatabaseService:
         # create all sequences ahead of time
         with Session(engine) as session:
             stmt = text("CREATE SEQUENCE IF NOT EXISTS message_sequence START 1;")
-            session.execute(stmt)
+            _ = session.execute(stmt)
             session.commit()
 
         SQLModel.metadata.create_all(engine)
 
-        self.engine = engine
+        self.engine: Engine = engine
 
     def get_business_by_id(self, business_id: int) -> Business | None:
         with Session(self.engine) as session:

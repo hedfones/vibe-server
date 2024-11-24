@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Literal, TypedDict
 
 from openai import OpenAI
-from openai.types.beta import assistant, thread
+from openai.types.beta import assistant, thread, threads
 from openai.types.beta.threads import Run
 from openai.types.beta.threads.run_submit_tool_outputs_params import ToolOutput
 
@@ -129,9 +129,15 @@ class Assistant:
                 messages = self.client.beta.threads.messages.list(
                     thread_id=self.thread.id
                 )
+
                 message = messages.data[0]
-                message_content = message.content[0].text.value
-                return message_content
+                message_content = message.content[0]
+                assert isinstance(
+                    message_content, threads.text_content_block.TextContentBlock
+                ), f"Expected a TextContentBlock, but received: {type(message_content)}"
+
+                message_text = message_content.text.value
+                return message_text
             elif run.status == "requires_action":
                 tool_outputs = self.get_tool_outputs(run)
                 run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(

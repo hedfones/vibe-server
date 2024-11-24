@@ -1,4 +1,5 @@
 from os import PathLike
+from pathlib import Path
 
 
 class SecretsManager:
@@ -9,22 +10,22 @@ class SecretsManager:
         secrets (dict): A dictionary containing the loaded secrets.
     """
 
-    def __init__(self, env_file: PathLike | str = ".envrc"):
+    def __init__(self, env_file: PathLike[str] | str = ".envrc"):
         """Initializes SecretsManager with the specified environment file.
 
         Args:
             env_file (str): The path to the .envrc file. Defaults to '.envrc'.
         """
-        self.env_file = env_file
-        self.secrets = self.load_secrets()
+        self.env_file: Path = Path(env_file)
+        self.secrets: dict[str, str] = self.load_secrets()
 
-    def load_secrets(self) -> dict:
+    def load_secrets(self) -> dict[str, str]:
         """Loads secrets from the specified .envrc file.
 
         Returns:
             dict: A dictionary containing the loaded secrets.
         """
-        secrets = {}
+        secrets: dict[str, str] = {}
         try:
             with open(self.env_file) as f:
                 for line in f:
@@ -62,7 +63,7 @@ class SecretsManager:
         """Saves the current secrets back to the .envrc file."""
         with open(self.env_file, "w") as f:
             for key, value in self.secrets.items():
-                f.write(f"{key}={value}\n")
+                _ = f.write(f"{key}={value}\n")
 
 
 secret_manager = SecretsManager()

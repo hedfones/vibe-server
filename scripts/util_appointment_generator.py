@@ -21,12 +21,12 @@ from source.database.model import (
 engine = db.engine
 
 
-def get_dates_between(start_date, end_date, day_of_week):
+def get_dates_between(start_date: date, end_date: date, day_of_week: int) -> list[date]:
     """
     Returns a list of dates between start_date and end_date that fall on day_of_week.
     Day_of_week: 0=Monday, ..., 6=Sunday
     """
-    dates = []
+    dates: list[date] = []
     current_date = start_date
     delta = timedelta(days=1)
     while current_date <= end_date:
