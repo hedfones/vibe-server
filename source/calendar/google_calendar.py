@@ -1,6 +1,6 @@
-import os.path
 import pickle
 from datetime import date, datetime
+from pathlib import Path
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -11,7 +11,13 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
 class GoogleCalendar:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        token_path: Path | str = "token.pickle",
+        credentials_path: Path | str = "credentials.json",
+    ) -> None:
+        self.token_path: Path = Path(token_path)
+        self.credentials_path: Path = Path(credentials_path)
         self.service: Resource = self.authenticate()
 
     # Authenticate and build the service
@@ -35,18 +41,19 @@ class GoogleCalendar:
             Resource: The authenticated Google Calendar API service object.
         """
         creds = None
-        if os.path.exists("token.pickle"):
-            with open("token.pickle", "rb") as token:
+        if self.token_path.exists():
+            with self.token_path.open("rb") as token:
                 creds = pickle.load(token)
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", SCOPES
+                    self.credentials_path, SCOPES
                 )
-                creds = flow.run_local_server(port=0)
-            with open("token.pickle", "wb") as token:
+                creds = flow.run_local_server(port=63103)
+            with self.token_path.open("wb") as token:
                 pickle.dump(creds, token)
         return build("calendar", "v3", credentials=creds)
 
@@ -87,3 +94,69 @@ class GoogleCalendar:
         )
         print(f"Event created: {created_event.get('htmlLink')}")
         return created_event
+
+    def read_appointments(
+        self, calendar_id: str, time_min: str, time_max: str
+    ) -> list[dict[str, int | datetime | str]]:
+        """
+        Reads existing appointments from a specific calendar within a time range.
+
+        Args:
+            service (Resource): The authenticated Google Calendar API service object.
+            calendar_id (str): The ID of the calendar to read events from.
+            time_min (str): The start of the time range in ISO 8601 format (e.g., "2024-11-25T00:00:00Z").
+            time_max (str): The end of the time range in ISO 8601 format (e.g., "2024-11-30T23:59:59Z").
+
+        Returns:
+            List[Dict[str, Any]]: A list of event details within the specified time range.
+        """
+        events_result = (
+            self.service.events()
+            .list(
+                calendarId=calendar_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
+
+        events = events_result.get("items", [])
+        if not events:
+            print("No events found.")
+        else:
+            print(f"Found {len(events)} event(s).")
+            for event in events:
+                start = event["start"].get("dateTime", event["start"].get("date"))
+                print(f"Event: {event['summary']} | Start: {start}")
+        return events
+
+    def get_calendar_ids(self):
+        """
+        Retrieves and prints all calendar IDs associated with the authenticated account.
+
+        Args:
+            service (Resource): The authenticated Google Calendar API service object.
+
+        Returns:
+            List[Dict[str, str]]: A list of dictionaries containing calendar summaries and their IDs.
+        """
+        # Retrieve the list of calendars
+        calendar_list = self.service.calendarList().list().execute()
+        calendars = calendar_list.get("items", [])
+
+        if not calendars:
+            print("No calendars found.")
+            return []
+
+        # Print and return the list of calendar IDs
+        print("Available calendars:")
+        calendar_info = []
+        for calendar in calendars:
+            summary = calendar.get("summary", "No Title")
+            calendar_id = calendar.get("id")
+            print(f"Name: {summary} | ID: {calendar_id}")
+            calendar_info.append({"summary": summary, "id": calendar_id})
+
+        return calendar_info
