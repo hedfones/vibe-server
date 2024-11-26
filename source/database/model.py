@@ -10,6 +10,8 @@ class Business(SQLModel, table=True):
     assistant_id: str
     start_message: str
     instructions: str
+    calendar_service: str
+    calendar_service_id: str
     created_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime, server_default=func.now())
     )  # Creation date
@@ -56,6 +58,7 @@ class Message(SQLModel, table=True):
 class Associate(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
+    calendar_id: str
     created_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime, server_default=func.now())
     )  # Creation date

@@ -73,6 +73,12 @@ class DatabaseService:
             for message in messages:
                 session.refresh(message)
 
+    def insert_appointment(self, appointment: Appointment) -> None:
+        with Session(self.engine) as session:
+            session.add(appointment)
+            session.commit()
+            session.refresh(appointment)
+
     def get_associates_by_location_product(
         self, location_id: int, product_id: int
     ) -> list[Associate]:
@@ -142,3 +148,25 @@ class DatabaseService:
             )
             results = session.exec(stmt).all()
         return list(results)
+
+    def get_associate_and_business_by_associate_id(
+        self, associate_id: int
+    ) -> tuple[Associate | None, Business | None]:
+        with Session(self.engine) as session:
+            associate_stmt = select(Associate).where(Associate.id == associate_id)
+            associate = session.exec(associate_stmt).first()
+
+            business = None
+            if associate:
+                business_stmt = select(Business).where(
+                    Business.id == associate.business_id
+                )
+                business = session.exec(business_stmt).first()
+
+        return associate, business
+
+    def get_location_by_id(self, location_id: int) -> Location | None:
+        with Session(self.engine) as session:
+            stmt = select(Location).where(Location.id == location_id)
+            location = session.exec(stmt).first()
+        return location

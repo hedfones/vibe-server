@@ -1,10 +1,11 @@
 import pickle
-from datetime import date, datetime
 from pathlib import Path
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
+
+from .model import Event
 
 # Scopes required for the Calendar API
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
@@ -75,9 +76,7 @@ class GoogleCalendar:
         return created_calendar["id"]
 
     # 2. Add an event to a specific calendar
-    def add_event(
-        self, calendar_id: str, event: dict[str, str | int | date | datetime]
-    ) -> dict[str, str | int | date | datetime]:
+    def add_event(self, calendar_id: str, event: Event) -> Event:
         """
         Adds an event to a specific calendar.
 
@@ -97,7 +96,7 @@ class GoogleCalendar:
 
     def read_appointments(
         self, calendar_id: str, time_min: str, time_max: str
-    ) -> list[dict[str, int | datetime | str]]:
+    ) -> list[Event]:
         """
         Reads existing appointments from a specific calendar within a time range.
 
@@ -132,7 +131,7 @@ class GoogleCalendar:
                 print(f"Event: {event['summary']} | Start: {start}")
         return events
 
-    def get_calendar_ids(self):
+    def get_calendar_ids(self) -> list[dict[str, str]]:
         """
         Retrieves and prints all calendar IDs associated with the authenticated account.
 
@@ -152,7 +151,7 @@ class GoogleCalendar:
 
         # Print and return the list of calendar IDs
         print("Available calendars:")
-        calendar_info = []
+        calendar_info: list[dict[str, str]] = []
         for calendar in calendars:
             summary = calendar.get("summary", "No Title")
             calendar_id = calendar.get("id")

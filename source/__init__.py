@@ -1,6 +1,6 @@
 from .assistant import Assistant, AssistantMessage, OpenAICredentials
 from .database import DatabaseService, Message, PostgresCredentials, Product
-from .database_utils import db
+from .functions import db
 from .model import (
     AvailabilityWindow,
     ConversationInitRequest,

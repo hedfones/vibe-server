@@ -10,7 +10,7 @@ from openai.types.beta import assistant, thread, threads
 from openai.types.beta.threads import Run
 from openai.types.beta.threads.run_submit_tool_outputs_params import ToolOutput
 
-from .database_utils import get_availability, get_product_list, get_product_locations
+from .functions import get_availability, get_product_list, get_product_locations
 
 
 @dataclass
