@@ -1,4 +1,5 @@
-from datetime import datetime
+import json
+from datetime import date, datetime, time
 
 from pydantic import BaseModel
 
@@ -53,3 +54,44 @@ class AvailabilityWindow(BaseModel):
             f"\tEnd Time: {self.end_time.strftime('%H:%M:%S')}\n"
             f"\tAssociate ID: {self.associate_id}"
         )
+
+
+class CheckAvailabilityRequest(BaseModel):
+    product_id: int
+    location_id: int
+
+
+class GetProductLocationsRequest(BaseModel):
+    product_id: int
+
+
+class SetAppointmentsRequest(BaseModel):
+    location_id: int
+    associate_id: int
+    day: date
+    start_time: time
+    end_time: time
+    summary: str
+    attendee_emails: list[str]
+    description: str = ""
+
+    @classmethod
+    def parse_json_to_request(cls, json_str: str) -> "SetAppointmentsRequest":
+        # Parse the JSON string
+        data = json.loads(json_str)
+
+        # Convert string date and time to appropriate types
+        data["day"] = datetime.strptime(
+            data["day"], "%Y-%m-%d"
+        ).date()  # Expecting 'YYYY-MM-DD' format
+        data["start_time"] = datetime.strptime(
+            data["start_time"], "%H:%M:%S"
+        ).time()  # Expecting 'HH:MM:SS' format
+        data["end_time"] = datetime.strptime(
+            data["end_time"], "%H:%M:%S"
+        ).time()  # Same for end time
+
+        # Create the SetAppointmentsRequest object
+        request = SetAppointmentsRequest(**data)
+
+        return request

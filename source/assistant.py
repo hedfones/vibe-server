@@ -10,7 +10,17 @@ from openai.types.beta import assistant, thread, threads
 from openai.types.beta.threads import Run
 from openai.types.beta.threads.run_submit_tool_outputs_params import ToolOutput
 
-from .functions import get_availability, get_product_list, get_product_locations
+from .functions import (
+    get_availability,
+    get_product_list,
+    get_product_locations,
+    set_appointment,
+)
+from .model import (
+    CheckAvailabilityRequest,
+    GetProductLocationsRequest,
+    SetAppointmentsRequest,
+)
 
 
 @dataclass
@@ -88,17 +98,22 @@ class Assistant:
             logging.info(
                 f"Running tool {tool.function.name} with arguments {tool.function.arguments}"
             )
-            arguments: dict[str, int] = {}
+            arguments: dict[str, int | str | list[str]] = {}
             if argument_string := tool.function.arguments:
                 arguments = json.loads(argument_string)
 
             if tool.function.name == "check_availability":
-                availability = get_availability(**arguments)
+                request = CheckAvailabilityRequest.model_validate(arguments)
+                availability = get_availability(request.product_id, request.location_id)
                 body = "\n".join(map(str, availability))
             elif tool.function.name == "get_product_locations":
-                body = get_product_locations(**arguments)
+                request = GetProductLocationsRequest.model_validate(arguments)
+                body = get_product_locations(request.product_id)
             elif tool.function.name == "get_product_list":
                 body = get_product_list(self.assistant_id)
+            elif tool.function.name == "set_appointment":
+                request = SetAppointmentsRequest.parse_json_to_request(argument_string)
+                body = set_appointment(request)
             else:
                 raise Exception(
                     "Unexpected tool function called: {}".format(tool.function.name)

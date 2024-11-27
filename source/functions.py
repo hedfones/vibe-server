@@ -1,10 +1,10 @@
-from datetime import date, datetime, time
+from datetime import datetime
 
 from fastapi import HTTPException
 
 from .calendar import Event, GoogleCalendar
 from .database import Appointment, DatabaseService, PostgresCredentials, Product
-from .model import AvailabilityWindow
+from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
 from .secret_manager import SecretsManager
 
@@ -59,31 +59,29 @@ def get_product_list(assistant_id: str) -> str:
     return product_string
 
 
-def schedule_appointment(
-    location_id: int,
-    associate_id: int,
-    day: date,
-    start_time: time,
-    end_time: time,
-    summary: str,
-    attendee_emails: list[str],
-    description: str | None = "",
-) -> None:
-    associate, business = db.get_associate_and_business_by_associate_id(associate_id)
-    assert associate is not None, f"Associate not found for ID `{associate_id}`."
+def set_appointment(request: SetAppointmentsRequest) -> str:
+    associate, business = db.get_associate_and_business_by_associate_id(
+        request.associate_id
+    )
+    assert (
+        associate is not None
+    ), f"Associate not found for ID `{request.associate_id}`."
     assert (
         business is not None
-    ), f"Business not found for associate ID `{associate_id}`."
+    ), f"Business not found for associate ID `{request.associate_id}`."
 
-    location = db.get_location_by_id(location_id)
-    assert location is not None, f"Location not found for ID `{location_id}`."
+    location = db.get_location_by_id(request.location_id)
+    assert location is not None, f"Location not found for ID `{request.location_id}`."
 
     appointment = Appointment(
-        associate_id=associate_id, date=day, start_time=start_time, end_time=end_time
+        associate_id=request.associate_id,
+        date=request.day,
+        start_time=request.start_time,
+        end_time=request.end_time,
     )
 
-    start_datetime = datetime.combine(day, start_time)
-    end_datetime = datetime.combine(day, end_time)
+    start_datetime = datetime.combine(request.day, request.start_time)
+    end_datetime = datetime.combine(request.day, request.end_time)
 
     if business.calendar_service == "google":
         calendar_id = business.calendar_service_id
@@ -97,8 +95,8 @@ def schedule_appointment(
         )
 
     event: Event = {
-        "summary": summary,
-        "description": description or "",
+        "summary": request.summary,
+        "description": request.description,
         "start": {
             "dateTime": start_datetime.isoformat(),
             "timeZone": "America/New_York",  # TODO: change to dynamic
@@ -107,7 +105,7 @@ def schedule_appointment(
             "dateTime": end_datetime.isoformat(),
             "timeZone": "America/New_York",  # TODO: change to dynamic
         },
-        "attendees": [{"email": email} for email in attendee_emails],
+        "attendees": [{"email": email} for email in request.attendee_emails],
         "location": location.description,
         "reminders": {
             "useDefault": False,
@@ -120,3 +118,5 @@ def schedule_appointment(
 
     _ = calendar.add_event(associate.calendar_id, event)
     db.insert_appointment(appointment)
+
+    return "Appointment created successfully!"
