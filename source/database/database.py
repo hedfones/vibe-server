@@ -182,3 +182,9 @@ class DatabaseService:
             )
             results = session.exec(stmt).all()
         return list(results)
+
+    def get_photo_by_id(self, product_id: int) -> Photo | None:
+        with Session(self.engine) as session:
+            stmt = select(Photo).where(Photo.id == product_id)
+            photo = session.exec(stmt).first()
+        return photo

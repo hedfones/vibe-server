@@ -1,10 +1,12 @@
 from .assistant import Assistant, AssistantMessage, OpenAICredentials
 from .database import DatabaseService, Message, PostgresCredentials, Product
+from .file_manager import FileManager
 from .functions import db
 from .model import (
     AvailabilityWindow,
     ConversationInitRequest,
     ConversationInitResponse,
+    GetPhotoRequest,
     UserMessageRequest,
     UserMessageResponse,
 )
@@ -27,4 +29,6 @@ __all__ = [
     "Product",
     "db",
     "AssistantMessage",
+    "FileManager",
+    "GetPhotoRequest",
 ]

@@ -20,6 +20,7 @@ class Business(SQLModel, table=True):
     products: list["Product"] = Relationship(back_populates="business")
     associates: list["Associate"] = Relationship(back_populates="business")
     locations: list["Location"] = Relationship(back_populates="business")
+    photos: list["Photo"] = Relationship(back_populates="business")
 
 
 class Conversation(SQLModel, table=True):
@@ -110,7 +111,7 @@ class Photo(SQLModel, table=True):
         default=None, sa_column=Column(DateTime, server_default=func.now())
     )
 
-    business: "Business" = Relationship(back_populates="products")
+    business: "Business" = Relationship(back_populates="photos")
 
     @override
     def __str__(self) -> str:

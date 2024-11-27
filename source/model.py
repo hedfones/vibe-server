@@ -99,3 +99,7 @@ class SetAppointmentsRequest(BaseModel):
 
 class GetProductPhotosRequest(BaseModel):
     product_id: int
+
+
+class GetPhotoRequest(BaseModel):
+    photo_id: int

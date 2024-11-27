@@ -1,13 +1,15 @@
 import logging
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from source import (
     Assistant,
     AssistantMessage,
     ConversationInitRequest,
     ConversationInitResponse,
+    FileManager,
+    GetPhotoRequest,
     Message,
     OpenAICredentials,
     Scheduler,
@@ -19,6 +21,7 @@ from source import (
 
 app = FastAPI()
 secrets = SecretsManager("./.env")
+file_manager = FileManager("./temp")
 
 openai_creds = OpenAICredentials(
     api_key=secrets.get("OPENAI_API_KEY") or "",
@@ -122,3 +125,12 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
 
     response = UserMessageResponse(message=new_messages[-1])
     return response
+
+
+@app.post("/get-photo/")
+def get_photo(payload: GetPhotoRequest) -> FileResponse:
+    photo = db.get_photo_by_id(payload.photo_id)
+    if photo is None:
+        raise HTTPException(404, f"Photo with ID {payload.photo_id} not found.")
+    file = file_manager.get_file(photo.file_uid)
+    return FileResponse(file, filename=file.name)
