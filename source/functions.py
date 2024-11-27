@@ -120,3 +120,13 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     db.insert_appointment(appointment)
 
     return "Appointment created successfully!"
+
+
+def get_product_photos(product_id: int) -> str:
+    photos = db.get_photos_by_product_id(product_id)
+    if not photos:
+        return "No photos available for this product."
+
+    photo_string = "\n".join(map(str, photos))
+
+    return photo_string

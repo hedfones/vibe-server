@@ -6,6 +6,7 @@ from .model import (
     Conversation,
     Location,
     Message,
+    Photo,
     Product,
     Schedule,
 )
@@ -21,4 +22,5 @@ __all__ = [
     "Schedule",
     "Product",
     "Location",
+    "Photo",
 ]

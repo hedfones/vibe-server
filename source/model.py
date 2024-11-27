@@ -95,3 +95,7 @@ class SetAppointmentsRequest(BaseModel):
         request = SetAppointmentsRequest(**data)
 
         return request
+
+
+class GetProductPhotosRequest(BaseModel):
+    product_id: int

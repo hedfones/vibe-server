@@ -13,6 +13,8 @@ from .model import (
     Location,
     LocationProductLink,
     Message,
+    Photo,
+    PhotoProductLink,
     Product,
     Schedule,
 )
@@ -170,3 +172,13 @@ class DatabaseService:
             stmt = select(Location).where(Location.id == location_id)
             location = session.exec(stmt).first()
         return location
+
+    def get_photos_by_product_id(self, product_id: int) -> list[Photo]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Photo)
+                .join(PhotoProductLink)
+                .where(PhotoProductLink.product_id == product_id)
+            )
+            results = session.exec(stmt).all()
+        return list(results)

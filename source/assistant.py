@@ -14,11 +14,13 @@ from .functions import (
     get_availability,
     get_product_list,
     get_product_locations,
+    get_product_photos,
     set_appointment,
 )
 from .model import (
     CheckAvailabilityRequest,
     GetProductLocationsRequest,
+    GetProductPhotosRequest,
     SetAppointmentsRequest,
 )
 
@@ -114,6 +116,9 @@ class Assistant:
             elif tool.function.name == "set_appointment":
                 request = SetAppointmentsRequest.parse_json_to_request(argument_string)
                 body = set_appointment(request)
+            elif tool.function.name == "get_product_photos":
+                request = GetProductPhotosRequest.model_validate(arguments)
+                body = get_product_photos(request.product_id)
             else:
                 raise Exception(
                     "Unexpected tool function called: {}".format(tool.function.name)
