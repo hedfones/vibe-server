@@ -1,6 +1,13 @@
 from .assistant import Assistant, AssistantMessage, OpenAICredentials
-from .database import DatabaseService, Message, PostgresCredentials, Product
-from .functions import db
+from .calendar import Event
+from .database import (
+    Appointment,
+    DatabaseService,
+    Message,
+    PostgresCredentials,
+    Product,
+)
+from .functions import db, event_to_appointment, get_calendar_by_business_id
 from .model import (
     AvailabilityWindow,
     ConversationInitRequest,
@@ -27,4 +34,8 @@ __all__ = [
     "Product",
     "db",
     "AssistantMessage",
+    "event_to_appointment",
+    "get_calendar_by_business_id",
+    "Appointment",
+    "Event",
 ]

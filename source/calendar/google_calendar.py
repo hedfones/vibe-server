@@ -1,4 +1,5 @@
 import pickle
+from datetime import datetime
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -95,7 +96,7 @@ class GoogleCalendar:
         return created_event
 
     def read_appointments(
-        self, calendar_id: str, time_min: str, time_max: str
+        self, calendar_id: str, time_min: datetime, time_max: datetime
     ) -> list[Event]:
         """
         Reads existing appointments from a specific calendar within a time range.
@@ -103,8 +104,8 @@ class GoogleCalendar:
         Args:
             service (Resource): The authenticated Google Calendar API service object.
             calendar_id (str): The ID of the calendar to read events from.
-            time_min (str): The start of the time range in ISO 8601 format (e.g., "2024-11-25T00:00:00Z").
-            time_max (str): The end of the time range in ISO 8601 format (e.g., "2024-11-30T23:59:59Z").
+            time_min (datetime): The start of the time range as a datetime object.
+            time_max (datetime): The end of the time range as a datetime object.
 
         Returns:
             List[Dict[str, Any]]: A list of event details within the specified time range.
@@ -113,8 +114,8 @@ class GoogleCalendar:
             self.service.events()
             .list(
                 calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
+                timeMin=time_min.isoformat() + "Z",
+                timeMax=time_max.isoformat() + "Z",
                 singleEvents=True,
                 orderBy="startTime",
             )

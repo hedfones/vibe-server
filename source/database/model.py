@@ -164,6 +164,10 @@ class Appointment(SQLModel, table=True):
     date: date
     start_time: time
     end_time: time
+    calendar_id: str
+    modified_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime, server_default=func.now())
+    )  # Creation date
     created_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime, server_default=func.now())
     )  # Creation date

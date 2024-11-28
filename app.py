@@ -1,13 +1,16 @@
 import logging
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from source import (
+    Appointment,
     Assistant,
     AssistantMessage,
     ConversationInitRequest,
     ConversationInitResponse,
+    Event,
     Message,
     OpenAICredentials,
     Scheduler,
@@ -15,6 +18,8 @@ from source import (
     UserMessageRequest,
     UserMessageResponse,
     db,
+    event_to_appointment,
+    get_calendar_by_business_id,
 )
 
 app = FastAPI()
@@ -122,3 +127,74 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
 
     response = UserMessageResponse(message=new_messages[-1])
     return response
+
+
+@app.get("/sync-calendars/")
+def sync_calendars() -> JSONResponse:
+    """
+    Sync calendars for all associates by converting events into appointments.
+
+    Retrieves all associates from the database, gets their calendar IDs,
+    and reads all events to convert them into appointments.
+    """
+    associates = db.get_all_associates()
+    appointments = []
+
+    start_date = datetime.now() - timedelta(days=1)
+    end_date = datetime.now() + timedelta(days=366)
+
+    for associate in associates:
+        calendar = get_calendar_by_business_id(associate.business_id)
+        events = calendar.read_appointments(associate.calendar_id, start_date, end_date)
+        appointments = db.get_appointments_by_associate_id(associate.id)
+
+        calendar_id_to_appointment: dict[str, Appointment] = {
+            appointment.calendar_id: appointment for appointment in appointments
+        }
+        calendar_id_to_event: dict[str, Event] = {
+            event["id"]: event for event in events
+        }
+
+        appointment_calendar_ids: set[str] = set(calendar_id_to_appointment.keys())
+        event_calendar_ids: set[str] = set(calendar_id_to_event.keys())
+
+        removed_from_calendar_appointments = appointment_calendar_ids.difference(
+            event_calendar_ids
+        )
+        added_to_calendar = event_calendar_ids.difference(appointment_calendar_ids)
+        common = event_calendar_ids.intersection(appointment_calendar_ids)
+
+        for event_id in removed_from_calendar_appointments:
+            appointment = calendar_id_to_appointment[event_id]
+            db.delete_appointment_by_calendar_id(appointment.calendar_id)
+            logging.info(
+                f"Appointment with calendar ID {appointment.calendar_id} deleted because it was removed by user from their calendar."
+            )
+
+        new_appointments: list[Appointment] = []
+        for event_id in added_to_calendar:
+            event = calendar_id_to_event[event_id]
+            appointment = event_to_appointment(event, associate.id)
+            new_appointments.append(appointment)
+        db.insert_appointments(new_appointments)
+
+        for event_id in common:
+            appointment = calendar_id_to_appointment[event_id]
+            event = calendar_id_to_event[event_id]
+            event_start = datetime.fromisoformat(event["start"]["dateTime"])
+            event_end = datetime.fromisoformat(event["end"]["dateTime"])
+            appointment_start = datetime.combine(
+                appointment.date, appointment.start_time
+            )
+            appointment_end = datetime.combine(appointment.date, appointment.end_time)
+
+            if event_start != appointment_start or event_end != appointment_end:
+                appointment.start_time = event_start.time()
+                appointment.end_time = event_end.time()
+                appointment.calendar_id = event["id"]
+                db.update_appointment(appointment)
+                logging.info(
+                    f"Updated appointment with calendar ID {appointment.calendar_id} to reflect changes in the calendar."
+                )
+
+    return JSONResponse(content={"appointments": appointments})

@@ -16,10 +16,12 @@ from source.database.model import (
     Product,
     Schedule,
 )
+from source.calendar import GoogleCalendar  # Import GoogleCalendar
+from source.secret_manager import SecretsManager  # Import SecretsManager
 
 # Replace with your actual database URL
 engine = db.engine
-
+secrets = SecretsManager("./.env")  # Initialize SecretsManager
 
 def get_dates_between(start_date: date, end_date: date, day_of_week: int) -> list[date]:
     """
@@ -35,6 +37,16 @@ def get_dates_between(start_date: date, end_date: date, day_of_week: int) -> lis
         current_date += delta
     return dates
 
+def get_calendar(associate_id: int) -> GoogleCalendar:
+    """Get Google Calendar instance for the associate."""
+    associate: Associate = db.select_by_id(Associate, associate_id)[0]
+    business = db.get_business_by_id(associate.business_id)
+    calendar_id = business.calendar_service_id
+
+    return GoogleCalendar(
+        secrets.get(f"GOOGLE_TOKEN_{calendar_id}") or "",
+        secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
+    )
 
 def generate_appointments():
     with Session(engine) as session:
@@ -62,6 +74,9 @@ def generate_appointments():
             if not schedules:
                 print(f"No schedules found for Associate ID: {associate.id}")
                 continue
+
+            calendar = get_calendar(associate.id)  # Get Google Calendar object
+
             for schedule in schedules:
                 # Determine start_date and end_date
                 today = date.today()
@@ -92,6 +107,7 @@ def generate_appointments():
                                         start_time=current_time.time(),
                                         end_time=(current_time + duration_td).time(),
                                     )
+
                                     # Check if appointment already exists
                                     existing_appointment = session.exec(
                                         select(Appointment).where(
@@ -108,6 +124,22 @@ def generate_appointments():
                                             f"Appointment already exists for Associate ID: {associate.id} on {appointment_date} at {current_time.time()}"
                                         )
                                     else:
+                                        # Create event in Google Calendar
+                                        event = {
+                                            "summary": "Appointment",
+                                            "description": f"Appointment for Associate ID: {associate.id}",
+                                            "start": {
+                                                "dateTime": start_datetime.isoformat(),
+                                                "timeZone": "America/New_York",  # Dynamically change timezone if needed
+                                            },
+                                            "end": {
+                                                "dateTime": end_datetime.isoformat(),
+                                                "timeZone": "America/New_York",  # Dynamically change timezone if needed
+                                            },
+                                        }
+                                        calendar_event = calendar.add_event(associate.calendar_id, event)
+                                        appointment.calendar_id = calendar_event.get("id", "")  # Set calendar_id
+
                                         session.add(appointment)
                                         print(
                                             f"Added appointment for Associate ID: {associate.id} on {appointment_date} from {current_time.time()} to {(current_time + duration_td).time()}"

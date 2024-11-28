@@ -170,3 +170,42 @@ class DatabaseService:
             stmt = select(Location).where(Location.id == location_id)
             location = session.exec(stmt).first()
         return location
+
+    def get_all_associates(self) -> list[Associate]:
+        with Session(self.engine) as session:
+            stmt = select(Associate)
+            associates = session.exec(stmt).all()
+            return list(associates)
+
+    def get_appointments_by_associate_id(self, associate_id: int) -> list[Appointment]:
+        with Session(self.engine) as session:
+            stmt = select(Appointment).where(Appointment.associate_id == associate_id)
+            appointments = session.exec(stmt).all()
+            return list(appointments)
+
+    def delete_appointment_by_calendar_id(self, calendar_id: str) -> None:
+        with Session(self.engine) as session:
+            stmt = select(Appointment).where(Appointment.calendar_id == calendar_id)
+            appointment = session.exec(stmt).first()
+            if appointment:
+                session.delete(appointment)
+                session.commit()
+
+    def insert_appointments(self, appointments: list[Appointment]) -> None:
+        with Session(self.engine) as session:
+            session.add_all(appointments)
+            session.commit()
+
+            for appointment in appointments:
+                session.refresh(appointment)
+
+    def update_appointment(self, appointment: Appointment) -> None:
+        with Session(self.engine) as session:
+            existing_appointment = session.get(Appointment, appointment.id)
+            if existing_appointment:
+                existing_appointment.date = appointment.date
+                existing_appointment.start_time = appointment.start_time
+                existing_appointment.end_time = appointment.end_time
+                existing_appointment.calendar_id = appointment.calendar_id
+                session.commit()
+                session.refresh(existing_appointment)

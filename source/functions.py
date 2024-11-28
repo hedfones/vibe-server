@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from dateutil import parser
 from fastapi import HTTPException
 
 from .calendar import Event, GoogleCalendar
@@ -59,6 +60,22 @@ def get_product_list(assistant_id: str) -> str:
     return product_string
 
 
+def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
+    business = db.get_business_by_id(business_id)
+    assert business is not None, f"Business not found for ID `{business_id}`."
+
+    if business.calendar_service == "google":
+        calendar_id = business.calendar_service_id
+        return GoogleCalendar(
+            secrets.get(f"GOOGLE_TOKEN_{calendar_id}") or "",
+            secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
+        )  # TODO: be more thoughtful about this credential process
+    else:
+        raise HTTPException(
+            400, detail=f"Unrecognized calendar service `{business.calendar_service}`."
+        )
+
+
 def set_appointment(request: SetAppointmentsRequest) -> str:
     associate, business = db.get_associate_and_business_by_associate_id(
         request.associate_id
@@ -73,13 +90,6 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     location = db.get_location_by_id(request.location_id)
     assert location is not None, f"Location not found for ID `{request.location_id}`."
 
-    appointment = Appointment(
-        associate_id=request.associate_id,
-        date=request.day,
-        start_time=request.start_time,
-        end_time=request.end_time,
-    )
-
     start_datetime = datetime.combine(request.day, request.start_time)
     end_datetime = datetime.combine(request.day, request.end_time)
 
@@ -93,6 +103,7 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
         raise HTTPException(
             400, detail=f"Unrecognized calendar service `{business.calendar_service}`."
         )
+    calendar = get_calendar_by_business_id(business.id)
 
     event: Event = {
         "summary": request.summary,
@@ -116,7 +127,32 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
         },
     }
 
-    _ = calendar.add_event(associate.calendar_id, event)
+    event = calendar.add_event(associate.calendar_id, event)
+    assert "id" in event, "Event is missing ID field"
+
+    appointment = Appointment(
+        associate_id=request.associate_id,
+        date=request.day,
+        start_time=request.start_time,
+        end_time=request.end_time,
+        calendar_id=event["id"],
+    )
+
     db.insert_appointment(appointment)
 
     return "Appointment created successfully!"
+
+
+def event_to_appointment(event: Event, associate_id: int) -> Appointment:
+    """Converts an Event to an Appointment."""
+
+    start_datetime = parser.isoparse(event["start"]["dateTime"])
+    end_datetime = parser.isoparse(event["end"]["dateTime"])
+
+    return Appointment(
+        associate_id=associate_id,
+        date=start_datetime.date(),
+        start_time=start_datetime.time(),
+        end_time=end_datetime.time(),
+        calendar_id=event.get("id", ""),
+    )

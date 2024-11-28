@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 class Timestamp(TypedDict):
@@ -21,10 +21,11 @@ class Reminder(TypedDict):
 
 
 class Event(TypedDict):
+    id: NotRequired[str]
     summary: str
-    description: str
+    description: NotRequired[str]
     start: Timestamp
     end: Timestamp
     location: str
-    attendees: list[Attendee]
+    attendees: NotRequired[list[Attendee]]
     reminders: Reminder
