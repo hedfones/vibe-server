@@ -62,10 +62,13 @@ def generate_appointments():
                 )
                 .where(AssociateProductLink.associate_id == associate.id)
             ).all()
-            # Get unique durations, sorted descending
-            durations = sorted(list(product_durations), reverse=True)
+            # Filter to only 60-120 minutes
+            durations = sorted(
+                [dur for dur in product_durations],
+                reverse=True
+            )
             if not durations:
-                print(f"No products found for Associate ID: {associate.id}")
+                print(f"No valid products found for Associate ID: {associate.id}")
                 continue
             # Get the associate's schedules
             schedules = session.exec(
@@ -86,20 +89,21 @@ def generate_appointments():
                 end_date = expires_on
                 # Get the dates that match the day_of_week
                 dates = get_dates_between(start_date, end_date, schedule.day_of_week)
+
                 for appointment_date in dates:
-                    # For each date, generate appointment slots
                     # Convert times to datetime objects
-                    start_datetime = datetime.combine(
-                        appointment_date, schedule.start_time
-                    )
+                    start_datetime = datetime.combine(appointment_date, schedule.start_time)
                     end_datetime = datetime.combine(appointment_date, schedule.end_time)
                     current_time = start_datetime
+
                     while current_time < end_datetime:
+                        # Generate appointment slots on the hour
+                        current_time = current_time.replace(minute=0, second=0, microsecond=0)
                         for duration in durations:
                             duration_td = timedelta(minutes=duration)
                             if current_time + duration_td <= end_datetime:
                                 # Decide randomly whether to create an appointment
-                                if random.choice([True, False]):  # 50% chance
+                                if random.choice([True, False, False]):  # 50% chance
                                     # Generate an appointment
                                     appointment = Appointment(
                                         associate_id=associate.id,
@@ -113,10 +117,8 @@ def generate_appointments():
                                         select(Appointment).where(
                                             Appointment.associate_id == associate.id,
                                             Appointment.date == appointment_date,
-                                            Appointment.start_time
-                                            == current_time.time(),
-                                            Appointment.end_time
-                                            == (current_time + duration_td).time(),
+                                            Appointment.start_time == current_time.time(),
+                                            Appointment.end_time == (current_time + duration_td).time(),
                                         )
                                     ).first()
                                     if existing_appointment:
@@ -129,11 +131,11 @@ def generate_appointments():
                                             "summary": "Appointment",
                                             "description": f"Appointment for Associate ID: {associate.id}",
                                             "start": {
-                                                "dateTime": start_datetime.isoformat(),
+                                                "dateTime": current_time.isoformat(),
                                                 "timeZone": "America/New_York",  # Dynamically change timezone if needed
                                             },
                                             "end": {
-                                                "dateTime": end_datetime.isoformat(),
+                                                "dateTime": (current_time + duration_td).isoformat(),
                                                 "timeZone": "America/New_York",  # Dynamically change timezone if needed
                                             },
                                         }
@@ -148,12 +150,12 @@ def generate_appointments():
                                     print(
                                         f"Skipped appointment slot for Associate ID: {associate.id} on {appointment_date} at {current_time.time()}"
                                     )
-                                # Update current_time
-                                current_time += duration_td
+                                # Update current_time to next hour
+                                current_time += timedelta(hours=1)
                                 break
                         else:
-                            # No duration fits, break the loop
-                            break
+                            # No valid duration fits, move to the next hour
+                            current_time += timedelta(hours=1)
                 # Commit the session after each associate's appointments
                 session.commit()
 

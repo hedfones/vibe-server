@@ -176,6 +176,7 @@ def sync_calendars() -> JSONResponse:
             event = calendar_id_to_event[event_id]
             appointment = event_to_appointment(event, associate.id)
             new_appointments.append(appointment)
+            logging.info(f"Found new appointment {event['summary']}")
         db.insert_appointments(new_appointments)
 
         for event_id in common:
