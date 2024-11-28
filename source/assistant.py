@@ -158,6 +158,8 @@ class Assistant:
                 run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(
                     thread_id=self.thread.id, run_id=run.id, tool_outputs=tool_outputs
                 )
+            elif run.status == "failed":
+                raise Exception(f"Assistant run failed with status: {run.status}")
             else:
                 logging.warning(f"{run.status=}")
             time.sleep(0.25)
