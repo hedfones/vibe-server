@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import Engine, create_engine, desc, func
 from sqlmodel import Session, SQLModel, select, text
@@ -207,5 +207,6 @@ class DatabaseService:
                 existing_appointment.start_time = appointment.start_time
                 existing_appointment.end_time = appointment.end_time
                 existing_appointment.calendar_id = appointment.calendar_id
+                existing_appointment.modified_at = datetime.now()
                 session.commit()
                 session.refresh(existing_appointment)

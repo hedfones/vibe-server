@@ -160,3 +160,45 @@ class GoogleCalendar:
             calendar_info.append({"summary": summary, "id": calendar_id})
 
         return calendar_info
+
+    def delete_all_events(self, calendar_id: str) -> None:
+        """
+        Deletes all events from a specified calendar.
+
+        Args:
+            calendar_id (str): The ID of the calendar from which to delete all events.
+        """
+        # Set up a boolean to track if there are more events to delete
+        page_token = None
+        while True:
+            # Fetch events in the calendar
+            events_result = (
+                self.service.events()
+                .list(
+                    calendarId=calendar_id,
+                    pageToken=page_token,
+                    singleEvents=True,
+                    orderBy="startTime",
+                )
+                .execute()
+            )
+
+            events = events_result.get("items", [])
+            if not events:
+                print("No more events found to delete.")
+                break
+
+            # Loop through each event and delete it
+            for event in events:
+                try:
+                    self.service.events().delete(
+                        calendarId=calendar_id, eventId=event["id"]
+                    ).execute()
+                    print(f"Deleted event: {event['summary']} | ID: {event['id']}")
+                except Exception as e:
+                    print(f"An error occurred while deleting event {event['id']}: {e}")
+
+            # Check for more pages of events
+            page_token = events_result.get("nextPageToken")
+            if not page_token:
+                break

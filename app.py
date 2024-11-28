@@ -191,10 +191,9 @@ def sync_calendars() -> JSONResponse:
             if event_start != appointment_start or event_end != appointment_end:
                 appointment.start_time = event_start.time()
                 appointment.end_time = event_end.time()
-                appointment.calendar_id = event["id"]
                 db.update_appointment(appointment)
                 logging.info(
                     f"Updated appointment with calendar ID {appointment.calendar_id} to reflect changes in the calendar."
                 )
 
-    return JSONResponse(content={"appointments": appointments})
+    return JSONResponse(content={"message": "👍"})
