@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal, TypedDict
 
@@ -52,7 +52,11 @@ class Assistant:
         """
         self.assistant_id: str = assistant_id
 
-        self.client: OpenAI = OpenAI(**asdict(credentials))
+        self.client: OpenAI = OpenAI(
+            api_key=credentials.api_key,
+            organization=credentials.organization,
+            project=credentials.project,
+        )
         self.assistant: assistant.Assistant = self.client.beta.assistants.retrieve(
             assistant_id
         )

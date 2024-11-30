@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from source import (
@@ -23,12 +24,23 @@ from source import (
 )
 
 app = FastAPI()
+# Add CORSMiddleware to allow requests from the client
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080"
+    ],  # Change this to the URL of your Vue.js app
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+
 secrets = SecretsManager("./.env")
 
 openai_creds = OpenAICredentials(
     api_key=secrets.get("OPENAI_API_KEY") or "",
-    project=secrets.get("OPENAI_PROJECT_ID") or "",
-    organization=secrets.get("OPENAI_ORGANIZATION_ID") or "",
+    project=secrets.get("OPENAI_PROJECT") or "",
+    organization=secrets.get("OPENAI_ORGANIZATION") or "",
 )
 
 scheduler = Scheduler(db)
