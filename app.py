@@ -27,15 +27,13 @@ app = FastAPI()
 # Add CORSMiddleware to allow requests from the client
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080"
-    ],  # Change this to the URL of your Vue.js app
+    allow_origins=["https://hedfones.netlify.app/", "http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allows all headers
 )
 
-secrets = SecretsManager("./.env")
+secrets = SecretsManager()
 
 openai_creds = OpenAICredentials(
     api_key=secrets.get("OPENAI_API_KEY") or "",

@@ -9,7 +9,7 @@ from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
 from .secret_manager import SecretsManager
 
-secrets = SecretsManager("./.env")
+secrets = SecretsManager()
 
 db_creds = PostgresCredentials(
     user=secrets.get("POSTGRES_USER") or "",

@@ -21,7 +21,7 @@ from source.secret_manager import SecretsManager  # Import SecretsManager
 
 # Replace with your actual database URL
 engine = db.engine
-secrets = SecretsManager("./.env")  # Initialize SecretsManager
+secrets = SecretsManager()  # Initialize SecretsManager
 
 def get_dates_between(start_date: date, end_date: date, day_of_week: int) -> list[date]:
     """
