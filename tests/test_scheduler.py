@@ -22,7 +22,7 @@ def scheduler(db_mock):
 
 def test_split_window(scheduler):
     window = AvailabilityWindow(
-        datetime(2023, 10, 15, 9, 0), datetime(2023, 10, 15, 17, 0)
+        start_time=datetime(2023, 10, 15, 9, 0), end_time=datetime(2023, 10, 15, 17, 0)
     )
     start_dt = datetime(2023, 10, 15, 10, 0)
     end_dt = datetime(2023, 10, 15, 11, 0)

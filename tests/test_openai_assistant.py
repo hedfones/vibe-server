@@ -2,12 +2,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from source.openai_service import Assistant, AssistantMessage, OpenAICredentials
+from source.assistant import Assistant, AssistantMessage, OpenAICredentials
 
 
 @pytest.fixture
 def mock_openai_client():
-    with patch("source.openai_service.OpenAI") as mock:
+    with patch("source.assistant.OpenAI") as mock:
         yield mock
 
 

@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from datetime import date
-from typing import List, Tuple
+from datetime import date, datetime
 
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine, desc, func
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
@@ -11,8 +10,10 @@ from .model import (
     AssociateProductLink,
     Business,
     Conversation,
+    Location,
     LocationProductLink,
     Message,
+    Product,
     Schedule,
 )
 
@@ -21,9 +22,9 @@ from .model import (
 class PostgresCredentials:
     user: str
     password: str
-    database: str = "database"
-    host: str = "localhost"
-    port: int = 5432
+    database: str
+    host: str
+    port: int
 
 
 class DatabaseService:
@@ -37,12 +38,12 @@ class DatabaseService:
         # create all sequences ahead of time
         with Session(engine) as session:
             stmt = text("CREATE SEQUENCE IF NOT EXISTS message_sequence START 1;")
-            session.execute(stmt)
+            _ = session.execute(stmt)
             session.commit()
 
         SQLModel.metadata.create_all(engine)
 
-        self.engine = engine
+        self.engine: Engine = engine
 
     def get_business_by_id(self, business_id: int) -> Business | None:
         with Session(self.engine) as session:
@@ -64,14 +65,23 @@ class DatabaseService:
             conversation = session.exec(stmt).first()
         return conversation
 
-    def insert_messages(self, messages: List[Message]) -> None:
+    def insert_messages(self, messages: list[Message]) -> None:
         with Session(self.engine) as session:
             session.add_all(messages)
             session.commit()
 
+            for message in messages:
+                session.refresh(message)
+
+    def insert_appointment(self, appointment: Appointment) -> None:
+        with Session(self.engine) as session:
+            session.add(appointment)
+            session.commit()
+            session.refresh(appointment)
+
     def get_associates_by_location_product(
         self, location_id: int, product_id: int
-    ) -> List[Associate]:
+    ) -> list[Associate]:
         with Session(self.engine) as session:
             stmt = (
                 select(Associate)
@@ -94,7 +104,7 @@ class DatabaseService:
 
     def get_schedules_appointments_by_location_associate(
         self, location_id: int, associate_id: int
-    ) -> List[Tuple[Schedule, Appointment]]:
+    ) -> list[tuple[Schedule, Appointment]]:
         with Session(self.engine) as session:
             stmt = (
                 select(Schedule, Appointment)
@@ -105,9 +115,98 @@ class DatabaseService:
                     Appointment.date >= date.today(),
                     Appointment.start_time >= Schedule.start_time,
                     Appointment.end_time <= Schedule.end_time,
-                    Appointment.date.weekday() == Schedule.day_of_week,
+                    ((func.extract("dow", Appointment.date) + 6) % 7)
+                    == Schedule.day_of_week,
                 )
             )
             results = session.exec(stmt).all()
 
             return list(results)
+
+    def select_by_id(self, Table: type[SQLModel], id: int) -> list[SQLModel]:
+        with Session(self.engine) as session:
+            stmt = select(Table).where(Table.id == id).order_by(desc(Table.created_at))
+            results = session.exec(stmt).all()
+            return list(results)
+
+    def get_locations_by_product_id(self, product_id: int) -> list[Location]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Location)
+                .join(LocationProductLink)
+                .where(LocationProductLink.product_id == product_id)
+            )
+            results = session.exec(stmt).all()
+        return list(results)
+
+    def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Product)
+                .join(Business)
+                .where(Business.assistant_id == assistant_id)
+            )
+            results = session.exec(stmt).all()
+        return list(results)
+
+    def get_associate_and_business_by_associate_id(
+        self, associate_id: int
+    ) -> tuple[Associate | None, Business | None]:
+        with Session(self.engine) as session:
+            associate_stmt = select(Associate).where(Associate.id == associate_id)
+            associate = session.exec(associate_stmt).first()
+
+            business = None
+            if associate:
+                business_stmt = select(Business).where(
+                    Business.id == associate.business_id
+                )
+                business = session.exec(business_stmt).first()
+
+        return associate, business
+
+    def get_location_by_id(self, location_id: int) -> Location | None:
+        with Session(self.engine) as session:
+            stmt = select(Location).where(Location.id == location_id)
+            location = session.exec(stmt).first()
+        return location
+
+    def get_all_associates(self) -> list[Associate]:
+        with Session(self.engine) as session:
+            stmt = select(Associate)
+            associates = session.exec(stmt).all()
+            return list(associates)
+
+    def get_appointments_by_associate_id(self, associate_id: int) -> list[Appointment]:
+        with Session(self.engine) as session:
+            stmt = select(Appointment).where(Appointment.associate_id == associate_id)
+            appointments = session.exec(stmt).all()
+            return list(appointments)
+
+    def delete_appointment_by_calendar_id(self, calendar_id: str) -> None:
+        with Session(self.engine) as session:
+            stmt = select(Appointment).where(Appointment.calendar_id == calendar_id)
+            appointment = session.exec(stmt).first()
+            if appointment:
+                session.delete(appointment)
+                session.commit()
+
+    def insert_appointments(self, appointments: list[Appointment]) -> None:
+        with Session(self.engine) as session:
+            session.add_all(appointments)
+            session.commit()
+
+            for appointment in appointments:
+                session.refresh(appointment)
+
+    def update_appointment(self, appointment: Appointment) -> None:
+        with Session(self.engine) as session:
+            existing_appointment = session.get(Appointment, appointment.id)
+            if existing_appointment:
+                existing_appointment.date = appointment.date
+                existing_appointment.start_time = appointment.start_time
+                existing_appointment.end_time = appointment.end_time
+                existing_appointment.calendar_id = appointment.calendar_id
+                existing_appointment.modified_at = datetime.now()
+                session.commit()
+                session.refresh(existing_appointment)

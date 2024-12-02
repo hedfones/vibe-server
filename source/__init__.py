@@ -1,12 +1,21 @@
-from .database import DatabaseService, Message, PostgresCredentials
+from .assistant import Assistant, AssistantMessage, OpenAICredentials
+from .calendar import Event
+from .database import (
+    Appointment,
+    DatabaseService,
+    Message,
+    PostgresCredentials,
+    Product,
+)
+from .functions import db, event_to_appointment, get_calendar_by_business_id
 from .model import (
+    AvailabilityWindow,
     ConversationInitRequest,
     ConversationInitResponse,
     UserMessageRequest,
     UserMessageResponse,
 )
-from .openai_service import Assistant, OpenAICredentials
-from .scheduler import AvailabilityWindow, Scheduler
+from .scheduler import Scheduler
 from .secret_manager import SecretsManager
 
 __all__ = [
@@ -22,4 +31,11 @@ __all__ = [
     "Message",
     "Scheduler",
     "AvailabilityWindow",
+    "Product",
+    "db",
+    "AssistantMessage",
+    "event_to_appointment",
+    "get_calendar_by_business_id",
+    "Appointment",
+    "Event",
 ]
