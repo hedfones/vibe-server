@@ -27,7 +27,11 @@ app = FastAPI()
 # Add CORSMiddleware to allow requests from the client
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://hedfones.netlify.app", "http://localhost:8080"],
+    allow_origins=[
+        "https://hedfones.netlify.app",
+        "http://localhost:8080",
+        "https://app.hedfones.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allows all headers
