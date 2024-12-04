@@ -2,6 +2,8 @@ import pickle
 from datetime import datetime
 from pathlib import Path
 
+from google.auth.credentials import Credentials
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
@@ -21,6 +23,11 @@ class GoogleCalendar:
         self.token_path: Path = Path(token_path)
         self.credentials_path: Path = Path(credentials_path)
         self.service: Resource = self.authenticate()
+
+    def refresh(self) -> Credentials:
+        flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, SCOPES)
+        creds = flow.run_local_server(port=63103)
+        return creds
 
     # Authenticate and build the service
     def authenticate(self) -> Resource:
@@ -49,12 +56,12 @@ class GoogleCalendar:
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                try:
+                    creds.refresh(Request())
+                except RefreshError:
+                    creds = self.refresh()
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials_path, SCOPES
-                )
-                creds = flow.run_local_server(port=63103)
+                creds = self.refresh()
             with self.token_path.open("wb") as token:
                 pickle.dump(creds, token)
         return build("calendar", "v3", credentials=creds)

@@ -10,6 +10,7 @@ class Business(SQLModel, table=True):
     assistant_id: str
     start_message: str
     instructions: str
+    context: str
     calendar_service: str
     calendar_service_id: str
     created_at: datetime | None = Field(

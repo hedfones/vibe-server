@@ -1,5 +1,4 @@
 import json
-import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -16,6 +15,7 @@ from .functions import (
     get_product_locations,
     set_appointment,
 )
+from .logger import logger
 from .model import (
     CheckAvailabilityRequest,
     GetProductLocationsRequest,
@@ -31,7 +31,7 @@ class OpenAICredentials:
 
 
 class AssistantMessage(TypedDict):
-    role: Literal["assistant", "user"]
+    role: Literal["assistant", "user", "system"]
     content: str
 
 
@@ -94,12 +94,12 @@ class Assistant:
         tool_outputs: list[ToolOutput] = []
 
         if run.required_action is None:
-            logging.warning("No required action detected for run.")
+            logger.warning("No required action detected for run.")
             return tool_outputs
 
         # Loop through each tool in the required action section
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            logging.info(
+            logger.info(
                 f"Running tool {tool.function.name} with arguments {tool.function.arguments}"
             )
             arguments: dict[str, int | str | list[str]] = {}
@@ -139,7 +139,9 @@ class Assistant:
         """
         if not run:
             run = self.client.beta.threads.runs.create_and_poll(
-                thread_id=self.thread.id, assistant_id=self.assistant.id
+                thread_id=self.thread.id,
+                assistant_id=self.assistant.id,
+                tool_choice="required",
             )
 
         timeout_timestamp = datetime.now() + timedelta(seconds=30)
@@ -165,6 +167,6 @@ class Assistant:
             elif run.status == "failed":
                 raise Exception(f"Assistant run failed with status: {run.status}")
             else:
-                logging.warning(f"{run.status=}")
+                logger.warning(f"{run.status=}")
             time.sleep(0.25)
         raise TimeoutError("Assistant took too long to respond.")

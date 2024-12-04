@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timedelta
 
 from fastapi import FastAPI, HTTPException, Request
@@ -21,6 +20,7 @@ from source import (
     db,
     event_to_appointment,
     get_calendar_by_business_id,
+    logger,
 )
 
 app = FastAPI()
@@ -47,13 +47,11 @@ openai_creds = OpenAICredentials(
 
 scheduler = Scheduler(db)
 
-logging.basicConfig(level=logging.INFO)
-
 
 @app.exception_handler(HTTPException)
 def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     # Log the detailed error message
-    logging.error(f"HTTP Exception: {exc.detail} (status code: {exc.status_code})")
+    logger.error(f"HTTP Exception: {exc.detail} (status code: {exc.status_code})")
 
     # Return the original error response
     return JSONResponse(
@@ -82,6 +80,8 @@ def initialize_conversation(
     # create thread
     assistant = Assistant(openai_creds, business.assistant_id)
     conversation = db.create_conversation(business, assistant.thread.id)
+    # assistant.add_message({"role": "system", "content": business.context})
+    assistant.add_message({"role": "assistant", "content": business.start_message})
 
     # get first message from assistant
     # TODO: in future, this intro message should be a static first message for
@@ -181,7 +181,7 @@ def sync_calendars() -> JSONResponse:
         for event_id in removed_from_calendar_appointments:
             appointment = calendar_id_to_appointment[event_id]
             db.delete_appointment_by_calendar_id(appointment.calendar_id)
-            logging.info(
+            logger.info(
                 f"Appointment with calendar ID {appointment.calendar_id} deleted because it was removed by user from their calendar."
             )
 
@@ -190,7 +190,7 @@ def sync_calendars() -> JSONResponse:
             event = calendar_id_to_event[event_id]
             appointment = event_to_appointment(event, associate.id)
             new_appointments.append(appointment)
-            logging.info(f"Found new appointment {event['summary']}")
+            logger.info(f"Found new appointment {event['summary']}")
         db.insert_appointments(new_appointments)
 
         for event_id in common:
@@ -207,7 +207,7 @@ def sync_calendars() -> JSONResponse:
                 appointment.start_time = event_start.time()
                 appointment.end_time = event_end.time()
                 db.update_appointment(appointment)
-                logging.info(
+                logger.info(
                     f"Updated appointment with calendar ID {appointment.calendar_id} to reflect changes in the calendar."
                 )
 

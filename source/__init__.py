@@ -8,6 +8,7 @@ from .database import (
     Product,
 )
 from .functions import db, event_to_appointment, get_calendar_by_business_id
+from .logger import logger
 from .model import (
     AvailabilityWindow,
     ConversationInitRequest,
@@ -38,4 +39,5 @@ __all__ = [
     "get_calendar_by_business_id",
     "Appointment",
     "Event",
+    "logger",
 ]
