@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import datetime
 
 import pytz
 from sqlalchemy import Column, DateTime, Sequence, func
@@ -72,7 +72,6 @@ class Associate(SQLModel, table=True):
 
     business: "Business" = Relationship(back_populates="associates")
     schedules: list["Schedule"] = Relationship(back_populates="associate")
-    appointments: list["Appointment"] = Relationship(back_populates="associate")
 
 
 class Location(SQLModel, table=True):
@@ -146,11 +145,8 @@ class Schedule(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     associate_id: int = Field(default=None, foreign_key="associate.id")
     location_id: int = Field(default=None, foreign_key="location.id")
-    start_time: time
-    end_time: time
-    effective_on: date
-    expires_on: date
-    day_of_week: int = Field(description="Day of the week as an integer, 0=Sunday ... 6=Saturday")
+    start_datetime: datetime
+    end_datetime: datetime
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(utc),
         sa_column=Column(DateTime, server_default=func.now()),
@@ -159,34 +155,10 @@ class Schedule(SQLModel, table=True):
     associate: "Associate" = Relationship(back_populates="schedules")
     location: "Location" = Relationship(back_populates="schedules")
 
-
-class Appointment(SQLModel, table=True):
-    id: int = Field(default=None, primary_key=True)
-    associate_id: int = Field(default=None, foreign_key="associate.id")
-    date: date
-    start_time: time
-    end_time: time
-    calendar_id: str
-    modified_at: datetime | None = Field(
-        default=None, sa_column=Column(DateTime, server_default=func.now())
-    )  # Creation date
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(utc),
-        sa_column=Column(DateTime, server_default=func.now()),
-    )
-
-    associate: "Associate" = Relationship(back_populates="appointments", sa_relationship_kwargs={"lazy": "joined"})
-
     @property
     def start_dtz(self) -> datetime:
-        tz = pytz.timezone(self.associate.timezone)
-        dt = datetime.combine(self.date, self.start_time)
-        dtz = tz.localize(dt)
-        return dtz
+        return pytz.UTC.localize(self.start_datetime)
 
     @property
     def end_dtz(self) -> datetime:
-        tz = pytz.timezone(self.associate.timezone)
-        dt = datetime.combine(self.date, self.end_time)
-        dtz = tz.localize(dt)
-        return dtz
+        return pytz.UTC.localize(self.end_datetime)

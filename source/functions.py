@@ -1,10 +1,9 @@
 from datetime import datetime
 
-from dateutil import parser
 from fastapi import HTTPException
 
 from .calendar import Event, GoogleCalendar
-from .database import Appointment, DatabaseService, PostgresCredentials, Product
+from .database import DatabaseService, PostgresCredentials, Product
 from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
 from .secret_manager import SecretsManager
@@ -20,7 +19,19 @@ db_creds = PostgresCredentials(
 )
 db = DatabaseService(db_creds)
 
-scheduler = Scheduler(db)
+
+def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
+    business = db.get_business_by_id(business_id)
+    assert business is not None, f"Business not found for ID `{business_id}`."
+
+    if business.calendar_service == "google":
+        calendar_id = business.calendar_service_id
+        return GoogleCalendar(
+            secrets.get(f"GOOGLE_TOKEN_{calendar_id}") or "",
+            secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
+        )  # TODO: be more thoughtful about this credential process
+    else:
+        raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
 
 
 def get_availability(product_id: int, location_id: int) -> list[AvailabilityWindow]:
@@ -28,6 +39,9 @@ def get_availability(product_id: int, location_id: int) -> list[AvailabilityWind
     if not products:
         raise HTTPException(404, detail=f"Unable to find product by id `{product_id}`")
     product = products.pop(0)
+
+    calendar = get_calendar_by_business_id(product.business_id)
+    scheduler = Scheduler(db, calendar)
 
     availabilities = scheduler.get_availabilities(product.id, product.duration_minutes, location_id)
     if not availabilities:
@@ -54,20 +68,6 @@ def get_product_list(assistant_id: str) -> str:
     products = db.get_products_by_assistant_id(assistant_id)
     product_string = "\n".join(map(str, products))
     return product_string
-
-
-def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
-    business = db.get_business_by_id(business_id)
-    assert business is not None, f"Business not found for ID `{business_id}`."
-
-    if business.calendar_service == "google":
-        calendar_id = business.calendar_service_id
-        return GoogleCalendar(
-            secrets.get(f"GOOGLE_TOKEN_{calendar_id}") or "",
-            secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
-        )  # TODO: be more thoughtful about this credential process
-    else:
-        raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
 
 
 def set_appointment(request: SetAppointmentsRequest) -> str:
@@ -116,29 +116,4 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     event = calendar.add_event(associate.calendar_id, event)
     assert "id" in event, "Event is missing ID field"
 
-    appointment = Appointment(
-        associate_id=request.associate_id,
-        date=request.day,
-        start_time=request.start_time,
-        end_time=request.end_time,
-        calendar_id=event["id"],
-    )
-
-    db.insert_appointment(appointment)
-
     return "Appointment created successfully!"
-
-
-def event_to_appointment(event: Event, associate_id: int) -> Appointment:
-    """Converts an Event to an Appointment."""
-
-    start_datetime = parser.isoparse(event["start"]["dateTime"])
-    end_datetime = parser.isoparse(event["end"]["dateTime"])
-
-    return Appointment(
-        associate_id=associate_id,
-        date=start_datetime.date(),
-        start_time=start_datetime.time(),
-        end_time=end_datetime.time(),
-        calendar_id=event.get("id", ""),
-    )

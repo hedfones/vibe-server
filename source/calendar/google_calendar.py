@@ -113,12 +113,15 @@ class GoogleCalendar:
         Returns:
             List[Dict[str, Any]]: A list of event details within the specified time range.
         """
+        assert time_min.tzinfo is not None
+        assert time_max.tzinfo is not None
+
         events_result = (
             self.service.events()
             .list(
                 calendarId=calendar_id,
-                timeMin=time_min.isoformat() + "Z",
-                timeMax=time_max.isoformat() + "Z",
+                timeMin=time_min.isoformat(),
+                timeMax=time_max.isoformat(),
                 singleEvents=True,
                 orderBy="startTime",
             )

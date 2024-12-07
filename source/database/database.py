@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import Engine, create_engine, desc, func
+import pytz
+from sqlalchemy import Engine, create_engine, desc
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
-    Appointment,
     Associate,
     AssociateProductLink,
     Business,
@@ -73,12 +73,6 @@ class DatabaseService:
             for message in messages:
                 session.refresh(message)
 
-    def insert_appointment(self, appointment: Appointment) -> None:
-        with Session(self.engine) as session:
-            session.add(appointment)
-            session.commit()
-            session.refresh(appointment)
-
     def get_associates_by_location_product(self, location_id: int, product_id: int) -> list[Associate]:
         with Session(self.engine) as session:
             stmt = (
@@ -100,24 +94,14 @@ class DatabaseService:
 
             return list(associates)
 
-    def get_schedules_appointments_by_location_associate(
-        self, location_id: int, associate_id: int
-    ) -> list[tuple[Schedule, Appointment]]:
+    def get_going_forward_schedules_by_location_associate(self, location_id: int, associate_id: int) -> list[Schedule]:
         with Session(self.engine) as session:
-            stmt = (
-                select(Schedule, Appointment)
-                .join(Appointment, Appointment.associate_id == Schedule.associate_id)
-                .where(
-                    Schedule.associate_id == associate_id,
-                    Schedule.location_id == location_id,
-                    Appointment.date >= date.today(),
-                    Appointment.start_time >= Schedule.start_time,
-                    Appointment.end_time <= Schedule.end_time,
-                    ((func.extract("dow", Appointment.date) + 6) % 7) == Schedule.day_of_week,
-                )
+            stmt = select(Schedule).where(
+                Schedule.associate_id == associate_id,
+                Schedule.location_id == location_id,
+                Schedule.start_datetime >= datetime.now(pytz.UTC),
             )
             results = session.exec(stmt).all()
-
             return list(results)
 
     def select_by_id(self, Table: type[SQLModel], id: int) -> list[SQLModel]:
@@ -125,6 +109,13 @@ class DatabaseService:
             stmt = select(Table).where(Table.id == id).order_by(desc(Table.created_at))
             results = session.exec(stmt).all()
             return list(results)
+
+    def get_associate_by_id(self, associate_id: int) -> Associate | None:
+        with Session(self.engine) as session:
+            associate_stmt = select(Associate).where(Associate.id == associate_id)
+            associate = session.exec(associate_stmt).first()
+
+        return associate
 
     def get_locations_by_product_id(self, product_id: int) -> list[Location]:
         with Session(self.engine) as session:
@@ -162,36 +153,13 @@ class DatabaseService:
             associates = session.exec(stmt).all()
             return list(associates)
 
-    def get_appointments_by_associate_id(self, associate_id: int) -> list[Appointment]:
+    def get_locations_by_associate_id(self, associate_id: int) -> list[Location]:
         with Session(self.engine) as session:
-            stmt = select(Appointment).where(Appointment.associate_id == associate_id)
-            appointments = session.exec(stmt).all()
-            return list(appointments)
-
-    def delete_appointment_by_calendar_id(self, calendar_id: str) -> None:
-        with Session(self.engine) as session:
-            stmt = select(Appointment).where(Appointment.calendar_id == calendar_id)
-            appointment = session.exec(stmt).first()
-            if appointment:
-                session.delete(appointment)
-                session.commit()
-
-    def insert_appointments(self, appointments: list[Appointment]) -> None:
-        with Session(self.engine) as session:
-            session.add_all(appointments)
-            session.commit()
-
-            for appointment in appointments:
-                session.refresh(appointment)
-
-    def update_appointment(self, appointment: Appointment) -> None:
-        with Session(self.engine) as session:
-            existing_appointment = session.get(Appointment, appointment.id)
-            if existing_appointment:
-                existing_appointment.date = appointment.date
-                existing_appointment.start_time = appointment.start_time
-                existing_appointment.end_time = appointment.end_time
-                existing_appointment.calendar_id = appointment.calendar_id
-                existing_appointment.modified_at = datetime.now()
-                session.commit()
-                session.refresh(existing_appointment)
+            stmt = (
+                select(Location)
+                .join(LocationProductLink, Location.id == LocationProductLink.location_id)
+                .join(AssociateProductLink, LocationProductLink.product_id == AssociateProductLink.product_id)
+                .where(AssociateProductLink.associate_id == associate_id)
+            )
+            results = session.exec(stmt).all()
+        return list(results)

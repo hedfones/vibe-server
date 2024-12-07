@@ -1,9 +1,11 @@
 import json
 from datetime import date, datetime, time
 
+import pytz
 from pydantic import BaseModel
 from typing_extensions import override
 
+from .calendar import Event
 from .database import Message
 
 
@@ -91,3 +93,28 @@ class SetAppointmentsRequest(BaseModel):
         request = SetAppointmentsRequest(**data)
 
         return request
+
+
+class Appointment(BaseModel):
+    start: datetime
+    end: datetime
+
+    @classmethod
+    def from_event(cls, event: Event) -> "Appointment":
+        event_start = event["start"]
+        dt = datetime.fromisoformat(event_start["dateTime"])
+        if not dt.tzinfo:
+            tz = pytz.timezone(event_start["timeZone"])
+            event_start_dtz = tz.localize(dt)
+        else:
+            event_start_dtz = dt
+
+        event_end = event["end"]
+        dt = datetime.fromisoformat(event_end["dateTime"])
+        if not dt.tzinfo:
+            tz = pytz.timezone(event_end["timeZone"])
+            event_end_dtz = tz.localize(dt)
+        else:
+            event_end_dtz = dt
+
+        return cls(start=event_start_dtz, end=event_end_dtz)
