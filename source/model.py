@@ -2,6 +2,7 @@ import json
 from datetime import date, datetime, time
 
 from pydantic import BaseModel
+from typing_extensions import override
 
 from .database import Message
 
@@ -46,6 +47,7 @@ class AvailabilityWindow(BaseModel):
         timedelta = self.end_time - self.start_time
         return abs(timedelta.total_seconds()) // 60
 
+    @override
     def __str__(self) -> str:
         return (
             "Availability Window:\n"
@@ -81,15 +83,9 @@ class SetAppointmentsRequest(BaseModel):
         data = json.loads(json_str)
 
         # Convert string date and time to appropriate types
-        data["day"] = datetime.strptime(
-            data["day"], "%Y-%m-%d"
-        ).date()  # Expecting 'YYYY-MM-DD' format
-        data["start_time"] = datetime.strptime(
-            data["start_time"], "%H:%M:%S"
-        ).time()  # Expecting 'HH:MM:SS' format
-        data["end_time"] = datetime.strptime(
-            data["end_time"], "%H:%M:%S"
-        ).time()  # Same for end time
+        data["day"] = datetime.strptime(data["day"], "%Y-%m-%d").date()  # Expecting 'YYYY-MM-DD' format
+        data["start_time"] = datetime.strptime(data["start_time"], "%H:%M:%S").time()  # Expecting 'HH:MM:SS' format
+        data["end_time"] = datetime.strptime(data["end_time"], "%H:%M:%S").time()  # Same for end time
 
         # Create the SetAppointmentsRequest object
         request = SetAppointmentsRequest(**data)

@@ -29,9 +29,7 @@ def get_availability(product_id: int, location_id: int) -> list[AvailabilityWind
         raise HTTPException(404, detail=f"Unable to find product by id `{product_id}`")
     product = products.pop(0)
 
-    availabilities = scheduler.get_availabilities(
-        product.id, product.duration_minutes, location_id
-    )
+    availabilities = scheduler.get_availabilities(product.id, product.duration_minutes, location_id)
     if not availabilities:
         raise HTTPException(
             404,
@@ -45,9 +43,7 @@ def get_availability(product_id: int, location_id: int) -> list[AvailabilityWind
 def get_product_locations(product_id: int) -> str:
     locations = db.get_locations_by_product_id(product_id)
     if not locations:
-        raise HTTPException(
-            404, f"Unable to find locations associated with product `{product_id}`."
-        )
+        raise HTTPException(404, f"Unable to find locations associated with product `{product_id}`.")
 
     location_string = "\n".join(map(str, locations))
 
@@ -71,21 +67,13 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
             secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
         )  # TODO: be more thoughtful about this credential process
     else:
-        raise HTTPException(
-            400, detail=f"Unrecognized calendar service `{business.calendar_service}`."
-        )
+        raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
 
 
 def set_appointment(request: SetAppointmentsRequest) -> str:
-    associate, business = db.get_associate_and_business_by_associate_id(
-        request.associate_id
-    )
-    assert (
-        associate is not None
-    ), f"Associate not found for ID `{request.associate_id}`."
-    assert (
-        business is not None
-    ), f"Business not found for associate ID `{request.associate_id}`."
+    associate, business = db.get_associate_and_business_by_associate_id(request.associate_id)
+    assert associate is not None, f"Associate not found for ID `{request.associate_id}`."
+    assert business is not None, f"Business not found for associate ID `{request.associate_id}`."
 
     location = db.get_location_by_id(request.location_id)
     assert location is not None, f"Location not found for ID `{request.location_id}`."
@@ -100,9 +88,7 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
             secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
         )  # TODO: be more thoughtful about this credential process
     else:
-        raise HTTPException(
-            400, detail=f"Unrecognized calendar service `{business.calendar_service}`."
-        )
+        raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
     calendar = get_calendar_by_business_id(business.id)
 
     event: Event = {

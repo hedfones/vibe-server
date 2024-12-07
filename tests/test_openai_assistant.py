@@ -13,9 +13,7 @@ def mock_openai_client():
 
 @pytest.fixture
 def assistant_credentials():
-    return OpenAICredentials(
-        api_key="test_api_key", organization="test_org", project="test_project"
-    )
+    return OpenAICredentials(api_key="test_api_key", organization="test_org", project="test_project")
 
 
 @pytest.fixture
@@ -26,9 +24,7 @@ def assistant_instance(mock_openai_client, assistant_credentials):
     mock_assistant = MagicMock()
     mock_assistant.id = "test_assistant_id"
 
-    mock_openai_client.return_value.beta.assistants.retrieve.return_value = (
-        mock_assistant
-    )
+    mock_openai_client.return_value.beta.assistants.retrieve.return_value = mock_assistant
     mock_openai_client.return_value.beta.threads.create.return_value = mock_thread
     mock_openai_client.return_value.beta.threads.retrieve.return_value = mock_thread
 
@@ -43,18 +39,14 @@ def test_initialization_creates_thread(assistant_instance):
     assert assistant_instance.thread_id == "test_thread_id"
 
 
-def test_thread_retrieval(
-    assistant_instance, mock_openai_client, assistant_credentials
-):
+def test_thread_retrieval(assistant_instance, mock_openai_client, assistant_credentials):
     assistant_instance_with_thread = Assistant(
         credentials=assistant_credentials,
         assistant_id="test_assistant_id",
         thread_id="existing_thread_id",
     )
     assert assistant_instance_with_thread.thread_id == "test_thread_id"
-    mock_openai_client.return_value.beta.threads.retrieve.assert_called_with(
-        "existing_thread_id"
-    )
+    mock_openai_client.return_value.beta.threads.retrieve.assert_called_with("existing_thread_id")
 
 
 def test_add_message(assistant_instance):
@@ -73,12 +65,8 @@ def test_retrieve_response_success(assistant_instance):
     assistant_instance.client.beta.threads.runs.create_and_poll.return_value = mock_run
 
     mock_message = MagicMock()
-    mock_message.content = [
-        MagicMock(text=MagicMock(value="Hello user!"))
-    ]  # Matching the expected structure
-    assistant_instance.client.beta.threads.messages.list.return_value.data = [
-        mock_message
-    ]
+    mock_message.content = [MagicMock(text=MagicMock(value="Hello user!"))]  # Matching the expected structure
+    assistant_instance.client.beta.threads.messages.list.return_value.data = [mock_message]
 
     response = assistant_instance.retrieve_response()
 

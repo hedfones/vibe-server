@@ -1,5 +1,4 @@
 from .assistant import Assistant, AssistantMessage, OpenAICredentials
-from .calendar import Event
 from .database import (
     Appointment,
     DatabaseService,

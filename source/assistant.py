@@ -57,9 +57,7 @@ class Assistant:
             organization=credentials.organization,
             project=credentials.project,
         )
-        self.assistant: assistant.Assistant = self.client.beta.assistants.retrieve(
-            assistant_id
-        )
+        self.assistant: assistant.Assistant = self.client.beta.assistants.retrieve(assistant_id)
 
         self.thread: thread.Thread
         if thread_id:
@@ -84,9 +82,7 @@ class Assistant:
         Args:
             message (AssistantMessage): The message to be added.
         """
-        _ = self.client.beta.threads.messages.create(
-            thread_id=self.thread.id, **message
-        )
+        _ = self.client.beta.threads.messages.create(thread_id=self.thread.id, **message)
         return
 
     def get_tool_outputs(self, run: Run) -> list[ToolOutput]:
@@ -99,9 +95,7 @@ class Assistant:
 
         # Loop through each tool in the required action section
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            logger.info(
-                f"Running tool {tool.function.name} with arguments {tool.function.arguments}"
-            )
+            logger.info(f"Running tool {tool.function.name} with arguments {tool.function.arguments}")
             arguments: dict[str, int | str | list[str]] = {}
             if argument_string := tool.function.arguments:
                 arguments = json.loads(argument_string)
@@ -119,9 +113,7 @@ class Assistant:
                 request = SetAppointmentsRequest.parse_json_to_request(argument_string)
                 body = set_appointment(request)
             else:
-                raise Exception(
-                    "Unexpected tool function called: {}".format(tool.function.name)
-                )
+                raise Exception("Unexpected tool function called: {}".format(tool.function.name))
 
             tool_outputs.append({"tool_call_id": tool.id, "output": body})
 
@@ -147,9 +139,7 @@ class Assistant:
         timeout_timestamp = datetime.now() + timedelta(seconds=30)
         while datetime.now() < timeout_timestamp:
             if run.status == "completed":
-                messages = self.client.beta.threads.messages.list(
-                    thread_id=self.thread.id
-                )
+                messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
 
                 message = messages.data[0]
                 message_content = message.content[0]

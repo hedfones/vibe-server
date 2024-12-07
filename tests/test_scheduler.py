@@ -21,9 +21,7 @@ def scheduler(db_mock):
 
 
 def test_split_window(scheduler):
-    window = AvailabilityWindow(
-        start_time=datetime(2023, 10, 15, 9, 0), end_time=datetime(2023, 10, 15, 17, 0)
-    )
+    window = AvailabilityWindow(start_time=datetime(2023, 10, 15, 9, 0), end_time=datetime(2023, 10, 15, 17, 0))
     start_dt = datetime(2023, 10, 15, 10, 0)
     end_dt = datetime(2023, 10, 15, 11, 0)
 
@@ -45,9 +43,7 @@ def test_get_associate_available_windows_no_appointments(scheduler, db_mock):
     db_mock.get_schedules_appointments_by_location_associate.return_value = []
 
     # Call the function
-    available_windows = scheduler.get_associate_available_windows(
-        associate_id, location_id, product_duration_minutes
-    )
+    available_windows = scheduler.get_associate_available_windows(associate_id, location_id, product_duration_minutes)
 
     # Verify
     assert available_windows == []
@@ -82,14 +78,10 @@ def test_get_associate_available_windows_with_appointments(scheduler, db_mock):
     ]
 
     # Set up the mock's return value
-    db_mock.get_schedules_appointments_by_location_associate.return_value = (
-        appointments_data
-    )
+    db_mock.get_schedules_appointments_by_location_associate.return_value = appointments_data
 
     # Call the function
-    available_windows = scheduler.get_associate_available_windows(
-        associate_id, location_id, product_duration_minutes
-    )
+    available_windows = scheduler.get_associate_available_windows(associate_id, location_id, product_duration_minutes)
 
     # Verify
     assert len(available_windows) == 2
@@ -112,9 +104,7 @@ def test_get_availabilities(scheduler, db_mock):
     db_mock.get_schedules_appointments_by_location_associate.return_value = []
 
     # Call the function
-    availabilities = scheduler.get_availabilities(
-        product_id, product_duration_minutes, location_id
-    )
+    availabilities = scheduler.get_availabilities(product_id, product_duration_minutes, location_id)
 
     # Verify
     assert len(availabilities) == 1

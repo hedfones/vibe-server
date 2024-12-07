@@ -96,15 +96,11 @@ class GoogleCalendar:
         Returns:
             Dict[str, Any]: The created event details.
         """
-        created_event = (
-            self.service.events().insert(calendarId=calendar_id, body=event).execute()
-        )
+        created_event = self.service.events().insert(calendarId=calendar_id, body=event).execute()
         print(f"Event created: {created_event.get('htmlLink')}")
         return created_event
 
-    def read_appointments(
-        self, calendar_id: str, time_min: datetime, time_max: datetime
-    ) -> list[Event]:
+    def read_appointments(self, calendar_id: str, time_min: datetime, time_max: datetime) -> list[Event]:
         """
         Reads existing appointments from a specific calendar within a time range.
 
@@ -198,9 +194,7 @@ class GoogleCalendar:
             # Loop through each event and delete it
             for event in events:
                 try:
-                    self.service.events().delete(
-                        calendarId=calendar_id, eventId=event["id"]
-                    ).execute()
+                    self.service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
                     print(f"Deleted event: {event['summary']} | ID: {event['id']}")
                 except Exception as e:
                     print(f"An error occurred while deleting event {event['id']}: {e}")

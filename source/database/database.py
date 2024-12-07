@@ -79,9 +79,7 @@ class DatabaseService:
             session.commit()
             session.refresh(appointment)
 
-    def get_associates_by_location_product(
-        self, location_id: int, product_id: int
-    ) -> list[Associate]:
+    def get_associates_by_location_product(self, location_id: int, product_id: int) -> list[Associate]:
         with Session(self.engine) as session:
             stmt = (
                 select(Associate)
@@ -115,8 +113,7 @@ class DatabaseService:
                     Appointment.date >= date.today(),
                     Appointment.start_time >= Schedule.start_time,
                     Appointment.end_time <= Schedule.end_time,
-                    ((func.extract("dow", Appointment.date) + 6) % 7)
-                    == Schedule.day_of_week,
+                    ((func.extract("dow", Appointment.date) + 6) % 7) == Schedule.day_of_week,
                 )
             )
             results = session.exec(stmt).all()
@@ -131,36 +128,24 @@ class DatabaseService:
 
     def get_locations_by_product_id(self, product_id: int) -> list[Location]:
         with Session(self.engine) as session:
-            stmt = (
-                select(Location)
-                .join(LocationProductLink)
-                .where(LocationProductLink.product_id == product_id)
-            )
+            stmt = select(Location).join(LocationProductLink).where(LocationProductLink.product_id == product_id)
             results = session.exec(stmt).all()
         return list(results)
 
     def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
         with Session(self.engine) as session:
-            stmt = (
-                select(Product)
-                .join(Business)
-                .where(Business.assistant_id == assistant_id)
-            )
+            stmt = select(Product).join(Business).where(Business.assistant_id == assistant_id)
             results = session.exec(stmt).all()
         return list(results)
 
-    def get_associate_and_business_by_associate_id(
-        self, associate_id: int
-    ) -> tuple[Associate | None, Business | None]:
+    def get_associate_and_business_by_associate_id(self, associate_id: int) -> tuple[Associate | None, Business | None]:
         with Session(self.engine) as session:
             associate_stmt = select(Associate).where(Associate.id == associate_id)
             associate = session.exec(associate_stmt).first()
 
             business = None
             if associate:
-                business_stmt = select(Business).where(
-                    Business.id == associate.business_id
-                )
+                business_stmt = select(Business).where(Business.id == associate.business_id)
                 business = session.exec(business_stmt).first()
 
         return associate, business

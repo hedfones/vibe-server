@@ -4,7 +4,8 @@ insert into
         start_message,
         instructions,
         calendar_service,
-        calendar_service_id
+        calendar_service_id,
+        context
     )
 values
     (
@@ -12,19 +13,22 @@ values
         E 'Hello! I am Jean val Jean, your knowledge and booking assistant.\n\nI can help answer any questions you have about Smith and Co Photography and our product offerings. If you decide that you would like to book our services, I will get your information and create a booking.\n\nEasy as that!',
         '',
         'google',
-        '11'
+        '11',
+        ''
     );
 
 insert into
-    associate (business_id, calendar_id)
+    associate (business_id, calendar_id, timezone)
 values
     (
         1,
-        'c600041dfb3c2c97ccc268cc6a9b94704473118e62e27f3eb33808d451a03bee@group.calendar.google.com'
+        'c600041dfb3c2c97ccc268cc6a9b94704473118e62e27f3eb33808d451a03bee@group.calendar.google.com',
+        'America/New_York'
     ),
     (
         1,
-        '4bb9c548ec2f8dfb1ba79fecabbc2e4301b60cc3fbf4f5b80984508494f240ce@group.calendar.google.com'
+        '4bb9c548ec2f8dfb1ba79fecabbc2e4301b60cc3fbf4f5b80984508494f240ce@group.calendar.google.com',
+        'America/New_York'
     );
 
 insert into

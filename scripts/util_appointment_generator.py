@@ -103,7 +103,7 @@ def generate_appointments():
                             duration_td = timedelta(minutes=duration)
                             if current_time + duration_td <= end_datetime:
                                 # Decide randomly whether to create an appointment
-                                if random.choice([True, False, False]):  # 50% chance
+                                if random.choice([True, False, False, False]):  # 50% chance
                                     # Generate an appointment
                                     appointment = Appointment(
                                         associate_id=associate.id,

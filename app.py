@@ -10,7 +10,6 @@ from source import (
     AssistantMessage,
     ConversationInitRequest,
     ConversationInitResponse,
-    Event,
     Message,
     OpenAICredentials,
     Scheduler,
@@ -22,6 +21,7 @@ from source import (
     get_calendar_by_business_id,
     logger,
 )
+from source.calendar import Event, get_event_dates
 
 app = FastAPI()
 # Add CORSMiddleware to allow requests from the client
@@ -94,9 +94,7 @@ def initialize_conversation(
     db.insert_messages([assistant_first_message])
 
     # return response
-    response = ConversationInitResponse(
-        conversation_id=conversation.id, message=assistant_first_message
-    )
+    response = ConversationInitResponse(conversation_id=conversation.id, message=assistant_first_message)
     return response
 
 
@@ -114,28 +112,18 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     new_messages: list[Message] = []
     conversation = db.get_conversation_by_id(payload.conversation_id)
     if not conversation:
-        raise HTTPException(
-            404, f"Conversation with ID {payload.conversation_id} not found."
-        )
+        raise HTTPException(404, f"Conversation with ID {payload.conversation_id} not found.")
 
     business = db.get_business_by_id(conversation.business_id)
     if not business:
-        raise HTTPException(
-            404, f"Business with ID {conversation.business_id} not found."
-        )
-    new_messages.append(
-        Message(conversation_id=conversation.id, role="user", content=payload.content)
-    )
+        raise HTTPException(404, f"Business with ID {conversation.business_id} not found.")
+    new_messages.append(Message(conversation_id=conversation.id, role="user", content=payload.content))
 
     assistant = Assistant(openai_creds, business.assistant_id, conversation.thread_id)
     message: AssistantMessage = {"role": "user", "content": payload.content}
     assistant.add_message(message)
     message_response = assistant.retrieve_response()
-    new_messages.append(
-        Message(
-            conversation_id=conversation.id, role="assistant", content=message_response
-        )
-    )
+    new_messages.append(Message(conversation_id=conversation.id, role="assistant", content=message_response))
 
     db.insert_messages(new_messages)
 
@@ -165,16 +153,12 @@ def sync_calendars() -> JSONResponse:
         calendar_id_to_appointment: dict[str, Appointment] = {
             appointment.calendar_id: appointment for appointment in appointments
         }
-        calendar_id_to_event: dict[str, Event] = {
-            event["id"]: event for event in events
-        }
+        calendar_id_to_event: dict[str, Event] = {event["id"]: event for event in events}
 
         appointment_calendar_ids: set[str] = set(calendar_id_to_appointment.keys())
         event_calendar_ids: set[str] = set(calendar_id_to_event.keys())
 
-        removed_from_calendar_appointments = appointment_calendar_ids.difference(
-            event_calendar_ids
-        )
+        removed_from_calendar_appointments = appointment_calendar_ids.difference(event_calendar_ids)
         added_to_calendar = event_calendar_ids.difference(appointment_calendar_ids)
         common = event_calendar_ids.intersection(appointment_calendar_ids)
 
@@ -182,7 +166,8 @@ def sync_calendars() -> JSONResponse:
             appointment = calendar_id_to_appointment[event_id]
             db.delete_appointment_by_calendar_id(appointment.calendar_id)
             logger.info(
-                f"Appointment with calendar ID {appointment.calendar_id} deleted because it was removed by user from their calendar."
+                f"Appointment with calendar ID {appointment.calendar_id} deleted because it was removed by user "
+                + "from their calendar."
             )
 
         new_appointments: list[Appointment] = []
@@ -196,19 +181,18 @@ def sync_calendars() -> JSONResponse:
         for event_id in common:
             appointment = calendar_id_to_appointment[event_id]
             event = calendar_id_to_event[event_id]
-            event_start = datetime.fromisoformat(event["start"]["dateTime"])
-            event_end = datetime.fromisoformat(event["end"]["dateTime"])
-            appointment_start = datetime.combine(
-                appointment.date, appointment.start_time
-            )
-            appointment_end = datetime.combine(appointment.date, appointment.end_time)
+
+            event_start, event_end = get_event_dates(event)
+
+            appointment_start, appointment_end = appointment.start_dtz, appointment.end_dtz
 
             if event_start != appointment_start or event_end != appointment_end:
                 appointment.start_time = event_start.time()
                 appointment.end_time = event_end.time()
                 db.update_appointment(appointment)
                 logger.info(
-                    f"Updated appointment with calendar ID {appointment.calendar_id} to reflect changes in the calendar."
+                    f"Updated appointment with calendar ID {appointment.calendar_id} to reflect changes in the "
+                    + "calendar."
                 )
 
     return JSONResponse(content={"message": "👍"})
