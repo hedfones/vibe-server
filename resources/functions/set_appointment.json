@@ -23,17 +23,13 @@
         "type": "number",
         "description": "ID of the associate for whom the appointment is being set"
       },
-      "day": {
+      "start_datetime": {
         "type": "string",
-        "description": "Date of the appointment in YYYY-MM-DD format"
+        "description": "Start time of the appointment in ISO 8601 format (e.g., '2023-10-05T15:00:00+00:00' for UTC or '2023-10-05T10:00:00-05:00' for EST)."
       },
-      "start_time": {
+      "end_datetime": {
         "type": "string",
-        "description": "Start time of the appointment in HH:MM:SS format"
-      },
-      "end_time": {
-        "type": "string",
-        "description": "End time of the appointment in HH:MM:SS format"
+        "description": "End time of the appointment in ISO 8601 format (e.g., '2023-10-05T15:00:00+00:00' for UTC or '2023-10-05T10:00:00-05:00' for EST)."
       },
       "summary": {
         "type": "string",

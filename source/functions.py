@@ -1,5 +1,4 @@
-from datetime import datetime
-
+import pytz
 from fastapi import HTTPException
 
 from .calendar import Event, GoogleCalendar
@@ -78,8 +77,8 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     location = db.get_location_by_id(request.location_id)
     assert location is not None, f"Location not found for ID `{request.location_id}`."
 
-    start_datetime = datetime.combine(request.day, request.start_time)
-    end_datetime = datetime.combine(request.day, request.end_time)
+    start_datetime = pytz.utc.localize(request.start_datetime)
+    end_datetime = pytz.utc.localize(request.end_datetime)
 
     if business.calendar_service == "google":
         calendar_id = business.calendar_service_id
@@ -96,11 +95,11 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
         "description": request.description,
         "start": {
             "dateTime": start_datetime.isoformat(),
-            "timeZone": "America/New_York",  # TODO: change to dynamic
+            "timeZone": "UTC",
         },
         "end": {
             "dateTime": end_datetime.isoformat(),
-            "timeZone": "America/New_York",  # TODO: change to dynamic
+            "timeZone": "UTC",
         },
         "attendees": [{"email": email} for email in request.attendee_emails],
         "location": location.description,

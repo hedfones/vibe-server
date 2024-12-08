@@ -31,6 +31,7 @@ class Conversation(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     thread_id: str
+    client_timezone: str
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(utc),
         sa_column=Column(DateTime, server_default=func.now()),

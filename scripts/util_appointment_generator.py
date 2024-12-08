@@ -25,9 +25,8 @@ def create_schedules_and_appointments():
     now = datetime.now(tz)
     end_date = now + timedelta(days=90)  # next 3 months ~90 days
 
-    # Define schedule hours (e.g. 9 AM to 1 PM UTC)
-    schedule_start_hour = 9
-    schedule_end_hour = 13  # 1 PM
+    schedule_start_hour = 12
+    schedule_end_hour = 17
 
     associates = db.get_all_associates()
     if not associates:

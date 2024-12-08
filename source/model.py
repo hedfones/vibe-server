@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime, time
+from datetime import datetime
 
 import pytz
 from pydantic import BaseModel
@@ -53,10 +53,10 @@ class AvailabilityWindow(BaseModel):
     def __str__(self) -> str:
         return (
             "Availability Window:\n"
-            f"\tDate: {self.start_time.strftime('%A, %B %d, %Y')}\n"
-            f"\tStart Time: {self.start_time.strftime('%H:%M:%S')}\n"
-            f"\tEnd Time: {self.end_time.strftime('%H:%M:%S')}\n"
-            f"\tAssociate ID: {self.associate_id}"
+            + f"\tDate: {self.start_time.strftime('%A, %B %d, %Y')}\n"
+            + f"\tStart Time: {self.start_time.strftime('%H:%M:%S')} {self.start_time.tzinfo or 'UTC'}\n"
+            + f"\tEnd Time: {self.end_time.strftime('%H:%M:%S')} {self.end_time.tzinfo or 'UTC'}\n"
+            + f"\tAssociate ID: {self.associate_id}"
         )
 
 
@@ -72,9 +72,8 @@ class GetProductLocationsRequest(BaseModel):
 class SetAppointmentsRequest(BaseModel):
     location_id: int
     associate_id: int
-    day: date
-    start_time: time
-    end_time: time
+    start_datetime: datetime
+    end_datetime: datetime
     summary: str
     attendee_emails: list[str]
     description: str = ""
@@ -85,9 +84,8 @@ class SetAppointmentsRequest(BaseModel):
         data = json.loads(json_str)
 
         # Convert string date and time to appropriate types
-        data["day"] = datetime.strptime(data["day"], "%Y-%m-%d").date()  # Expecting 'YYYY-MM-DD' format
-        data["start_time"] = datetime.strptime(data["start_time"], "%H:%M:%S").time()  # Expecting 'HH:MM:SS' format
-        data["end_time"] = datetime.strptime(data["end_time"], "%H:%M:%S").time()  # Same for end time
+        data["start_datetime"] = datetime.fromisoformat(data["start_datetime"])
+        data["end_datetime"] = datetime.fromisoformat(data["end_datetime"])  # Same for end time
 
         # Create the SetAppointmentsRequest object
         request = SetAppointmentsRequest(**data)
