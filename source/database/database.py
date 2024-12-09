@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime
 
-from sqlalchemy import Engine, create_engine, desc, func
+import pytz
+from sqlalchemy import Engine, create_engine, desc
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
-    Appointment,
     Associate,
     AssociateProductLink,
     Business,
@@ -53,9 +53,9 @@ class DatabaseService:
             business = session.exec(stmt).first()
         return business
 
-    def create_conversation(self, business: Business, thread_id: str) -> Conversation:
+    def create_conversation(self, business: Business, client_timezone: str, thread_id: str) -> Conversation:
         with Session(self.engine) as session:
-            conversation = Conversation(business_id=business.id, thread_id=thread_id)
+            conversation = Conversation(business_id=business.id, client_timezone=client_timezone, thread_id=thread_id)
             session.add(conversation)
             session.commit()
             session.refresh(conversation)
@@ -75,15 +75,7 @@ class DatabaseService:
             for message in messages:
                 session.refresh(message)
 
-    def insert_appointment(self, appointment: Appointment) -> None:
-        with Session(self.engine) as session:
-            session.add(appointment)
-            session.commit()
-            session.refresh(appointment)
-
-    def get_associates_by_location_product(
-        self, location_id: int, product_id: int
-    ) -> list[Associate]:
+    def get_associates_by_location_product(self, location_id: int, product_id: int) -> list[Associate]:
         with Session(self.engine) as session:
             stmt = (
                 select(Associate)
@@ -104,25 +96,14 @@ class DatabaseService:
 
             return list(associates)
 
-    def get_schedules_appointments_by_location_associate(
-        self, location_id: int, associate_id: int
-    ) -> list[tuple[Schedule, Appointment]]:
+    def get_going_forward_schedules_by_location_associate(self, location_id: int, associate_id: int) -> list[Schedule]:
         with Session(self.engine) as session:
-            stmt = (
-                select(Schedule, Appointment)
-                .join(Appointment, Appointment.associate_id == Schedule.associate_id)
-                .where(
-                    Schedule.associate_id == associate_id,
-                    Schedule.location_id == location_id,
-                    Appointment.date >= date.today(),
-                    Appointment.start_time >= Schedule.start_time,
-                    Appointment.end_time <= Schedule.end_time,
-                    ((func.extract("dow", Appointment.date) + 6) % 7)
-                    == Schedule.day_of_week,
-                )
+            stmt = select(Schedule).where(
+                Schedule.associate_id == associate_id,
+                Schedule.location_id == location_id,
+                Schedule.start_datetime >= datetime.now(pytz.UTC),
             )
             results = session.exec(stmt).all()
-
             return list(results)
 
     def select_by_id(self, Table: type[SQLModel], id: int) -> list[SQLModel]:
@@ -131,38 +112,33 @@ class DatabaseService:
             results = session.exec(stmt).all()
             return list(results)
 
+    def get_associate_by_id(self, associate_id: int) -> Associate | None:
+        with Session(self.engine) as session:
+            associate_stmt = select(Associate).where(Associate.id == associate_id)
+            associate = session.exec(associate_stmt).first()
+
+        return associate
+
     def get_locations_by_product_id(self, product_id: int) -> list[Location]:
         with Session(self.engine) as session:
-            stmt = (
-                select(Location)
-                .join(LocationProductLink)
-                .where(LocationProductLink.product_id == product_id)
-            )
+            stmt = select(Location).join(LocationProductLink).where(LocationProductLink.product_id == product_id)
             results = session.exec(stmt).all()
         return list(results)
 
     def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
         with Session(self.engine) as session:
-            stmt = (
-                select(Product)
-                .join(Business)
-                .where(Business.assistant_id == assistant_id)
-            )
+            stmt = select(Product).join(Business).where(Business.assistant_id == assistant_id)
             results = session.exec(stmt).all()
         return list(results)
 
-    def get_associate_and_business_by_associate_id(
-        self, associate_id: int
-    ) -> tuple[Associate | None, Business | None]:
+    def get_associate_and_business_by_associate_id(self, associate_id: int) -> tuple[Associate | None, Business | None]:
         with Session(self.engine) as session:
             associate_stmt = select(Associate).where(Associate.id == associate_id)
             associate = session.exec(associate_stmt).first()
 
             business = None
             if associate:
-                business_stmt = select(Business).where(
-                    Business.id == associate.business_id
-                )
+                business_stmt = select(Business).where(Business.id == associate.business_id)
                 business = session.exec(business_stmt).first()
 
         return associate, business
@@ -175,11 +151,7 @@ class DatabaseService:
 
     def get_photos_by_product_id(self, product_id: int) -> list[Photo]:
         with Session(self.engine) as session:
-            stmt = (
-                select(Photo)
-                .join(PhotoProductLink)
-                .where(PhotoProductLink.product_id == product_id)
-            )
+            stmt = select(Photo).join(PhotoProductLink).where(PhotoProductLink.product_id == product_id)
             results = session.exec(stmt).all()
         return list(results)
 
@@ -188,3 +160,20 @@ class DatabaseService:
             stmt = select(Photo).where(Photo.id == product_id)
             photo = session.exec(stmt).first()
         return photo
+
+    def get_all_associates(self) -> list[Associate]:
+        with Session(self.engine) as session:
+            stmt = select(Associate)
+            associates = session.exec(stmt).all()
+            return list(associates)
+
+    def get_locations_by_associate_id(self, associate_id: int) -> list[Location]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Location)
+                .join(LocationProductLink, Location.id == LocationProductLink.location_id)
+                .join(AssociateProductLink, LocationProductLink.product_id == AssociateProductLink.product_id)
+                .where(AssociateProductLink.associate_id == associate_id)
+            )
+            results = session.exec(stmt).all()
+        return list(results)

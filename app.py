@@ -1,6 +1,5 @@
-import logging
-
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from source import (
@@ -12,32 +11,41 @@ from source import (
     GetPhotoRequest,
     Message,
     OpenAICredentials,
-    Scheduler,
     SecretsManager,
     UserMessageRequest,
     UserMessageResponse,
     db,
+    logger,
 )
 
 app = FastAPI()
-secrets = SecretsManager("./.env")
+# Add CORSMiddleware to allow requests from the client
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://hedfones.netlify.app",
+        "http://localhost:8080",
+        "https://app.hedfones.com",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+
+secrets = SecretsManager()
 file_manager = FileManager("./temp")
 
 openai_creds = OpenAICredentials(
     api_key=secrets.get("OPENAI_API_KEY") or "",
-    project=secrets.get("OPENAI_PROJECT_ID") or "",
-    organization=secrets.get("OPENAI_ORGANIZATION_ID") or "",
+    project=secrets.get("OPENAI_PROJECT") or "",
+    organization=secrets.get("OPENAI_ORGANIZATION") or "",
 )
-
-scheduler = Scheduler(db)
-
-logging.basicConfig(level=logging.INFO)
 
 
 @app.exception_handler(HTTPException)
 def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     # Log the detailed error message
-    logging.error(f"HTTP Exception: {exc.detail} (status code: {exc.status_code})")
+    logger.error(f"HTTP Exception: {exc.detail} (status code: {exc.status_code})")
 
     # Return the original error response
     return JSONResponse(
@@ -47,9 +55,7 @@ def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
 
 
 @app.post("/initialize-conversation/", response_model=ConversationInitResponse)
-def initialize_conversation(
-    payload: ConversationInitRequest,
-) -> ConversationInitResponse:
+def initialize_conversation(payload: ConversationInitRequest) -> ConversationInitResponse:
     """
     Initialize a new conversation for a specific business.
 
@@ -64,12 +70,11 @@ def initialize_conversation(
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
 
     # create thread
-    assistant = Assistant(openai_creds, business.assistant_id)
-    conversation = db.create_conversation(business, assistant.thread.id)
+    assistant = Assistant(openai_creds, business.assistant_id, payload.client_timezone)
+    conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.id)
+    # assistant.add_message({"role": "system", "content": business.context})
+    assistant.add_message({"role": "assistant", "content": business.start_message})
 
-    # get first message from assistant
-    # TODO: in future, this intro message should be a static first message for
-    #   each assistant
     assistant_first_message = Message(
         conversation_id=conversation.id,
         role="assistant",
@@ -78,9 +83,7 @@ def initialize_conversation(
     db.insert_messages([assistant_first_message])
 
     # return response
-    response = ConversationInitResponse(
-        conversation_id=conversation.id, message=assistant_first_message
-    )
+    response = ConversationInitResponse(conversation_id=conversation.id, message=assistant_first_message)
     return response
 
 
@@ -98,28 +101,18 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     new_messages: list[Message] = []
     conversation = db.get_conversation_by_id(payload.conversation_id)
     if not conversation:
-        raise HTTPException(
-            404, f"Conversation with ID {payload.conversation_id} not found."
-        )
+        raise HTTPException(404, f"Conversation with ID {payload.conversation_id} not found.")
 
     business = db.get_business_by_id(conversation.business_id)
     if not business:
-        raise HTTPException(
-            404, f"Business with ID {conversation.business_id} not found."
-        )
-    new_messages.append(
-        Message(conversation_id=conversation.id, role="user", content=payload.content)
-    )
+        raise HTTPException(404, f"Business with ID {conversation.business_id} not found.")
+    new_messages.append(Message(conversation_id=conversation.id, role="user", content=payload.content))
 
-    assistant = Assistant(openai_creds, business.assistant_id, conversation.thread_id)
+    assistant = Assistant(openai_creds, business.assistant_id, conversation.client_timezone, conversation.thread_id)
     message: AssistantMessage = {"role": "user", "content": payload.content}
     assistant.add_message(message)
     message_response = assistant.retrieve_response()
-    new_messages.append(
-        Message(
-            conversation_id=conversation.id, role="assistant", content=message_response
-        )
-    )
+    new_messages.append(Message(conversation_id=conversation.id, role="assistant", content=message_response))
 
     db.insert_messages(new_messages)
 

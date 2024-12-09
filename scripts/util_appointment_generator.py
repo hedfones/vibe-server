@@ -1,130 +1,105 @@
-import os
 import random
-import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
+import pytz
+from sqlmodel import Session
 
-from sqlmodel import Session, select
+# Assuming you've imported or defined:
+# DatabaseService, PostgresCredentials, Business, Associate, Schedule, Product
+# GoogleCalendar, and using the Event definition you provided
+from source.calendar import Event  # Using the provided Event TypedDict
+from source import db, get_calendar_by_business_id
+from source.database import Schedule
 
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
+calendar = get_calendar_by_business_id(1)
 
-from source import db
-from source.database.model import (
-    Appointment,
-    Associate,
-    AssociateProductLink,
-    Product,
-    Schedule,
-)
+def generate_weekday_dates(start_date: datetime, end_date: datetime):
+    """Generate all weekday (Mon-Fri) dates between start_date (inclusive) and end_date (exclusive)."""
+    current = start_date
+    while current < end_date:
+        if current.weekday() < 5:  # Monday=0, Sunday=6
+            yield current
+        current += timedelta(days=1)
 
-# Replace with your actual database URL
-engine = db.engine
+def create_schedules_and_appointments():
+    tz = pytz.UTC
+    now = datetime.now(tz)
+    end_date = now + timedelta(days=90)  # next 3 months ~90 days
 
+    schedule_start_hour = 12
+    schedule_end_hour = 17
 
-def get_dates_between(start_date: date, end_date: date, day_of_week: int) -> list[date]:
-    """
-    Returns a list of dates between start_date and end_date that fall on day_of_week.
-    Day_of_week: 0=Monday, ..., 6=Sunday
-    """
-    dates: list[date] = []
-    current_date = start_date
-    delta = timedelta(days=1)
-    while current_date <= end_date:
-        if current_date.weekday() == day_of_week:
-            dates.append(current_date)
-        current_date += delta
-    return dates
+    associates = db.get_all_associates()
+    if not associates:
+        print("No associates found. Exiting.")
+        return
 
+    for associate in associates:
+        # We'll assume associate has a calendar_id
+        calendar_id = associate.calendar_id
+        if not calendar_id:
+            print(f"Associate {associate.id} has no calendar_id. Skipping appointments creation.")
+            continue
 
-def generate_appointments():
-    with Session(engine) as session:
-        # Get all associates
-        associates = session.exec(select(Associate)).all()
-        for associate in associates:
-            print(f"Generating appointments for Associate ID: {associate.id}")
-            # Get the products the associate offers
-            product_durations = session.exec(
-                select(Product.duration_minutes)
-                .join(
-                    AssociateProductLink, Product.id == AssociateProductLink.product_id
-                )
-                .where(AssociateProductLink.associate_id == associate.id)
-            ).all()
-            # Get unique durations, sorted descending
-            durations = sorted(list(product_durations), reverse=True)
-            if not durations:
-                print(f"No products found for Associate ID: {associate.id}")
-                continue
-            # Get the associate's schedules
-            schedules = session.exec(
-                select(Schedule).where(Schedule.associate_id == associate.id)
-            ).all()
-            if not schedules:
-                print(f"No schedules found for Associate ID: {associate.id}")
-                continue
-            for schedule in schedules:
-                # Determine start_date and end_date
-                today = date.today()
-                effective_on = schedule.effective_on
-                expires_on = schedule.expires_on
-                start_date = max(today, effective_on)
-                end_date = expires_on
-                # Get the dates that match the day_of_week
-                dates = get_dates_between(start_date, end_date, schedule.day_of_week)
-                for appointment_date in dates:
-                    # For each date, generate appointment slots
-                    # Convert times to datetime objects
-                    start_datetime = datetime.combine(
-                        appointment_date, schedule.start_time
-                    )
-                    end_datetime = datetime.combine(appointment_date, schedule.end_time)
-                    current_time = start_datetime
-                    while current_time < end_datetime:
-                        for duration in durations:
-                            duration_td = timedelta(minutes=duration)
-                            if current_time + duration_td <= end_datetime:
-                                # Decide randomly whether to create an appointment
-                                if random.choice([True, False]):  # 50% chance
-                                    # Generate an appointment
-                                    appointment = Appointment(
-                                        associate_id=associate.id,
-                                        date=appointment_date,
-                                        start_time=current_time.time(),
-                                        end_time=(current_time + duration_td).time(),
-                                    )
-                                    # Check if appointment already exists
-                                    existing_appointment = session.exec(
-                                        select(Appointment).where(
-                                            Appointment.associate_id == associate.id,
-                                            Appointment.date == appointment_date,
-                                            Appointment.start_time
-                                            == current_time.time(),
-                                            Appointment.end_time
-                                            == (current_time + duration_td).time(),
-                                        )
-                                    ).first()
-                                    if existing_appointment:
-                                        print(
-                                            f"Appointment already exists for Associate ID: {associate.id} on {appointment_date} at {current_time.time()}"
-                                        )
-                                    else:
-                                        session.add(appointment)
-                                        print(
-                                            f"Added appointment for Associate ID: {associate.id} on {appointment_date} from {current_time.time()} to {(current_time + duration_td).time()}"
-                                        )
-                                else:
-                                    print(
-                                        f"Skipped appointment slot for Associate ID: {associate.id} on {appointment_date} at {current_time.time()}"
-                                    )
-                                # Update current_time
-                                current_time += duration_td
-                                break
-                        else:
-                            # No duration fits, break the loop
-                            break
-                # Commit the session after each associate's appointments
+        # Get locations for this associate
+        locations = db.get_locations_by_associate_id(associate.id)
+        if not locations:
+            print(f"No locations found for associate {associate.id}. Skipping.")
+            continue
+
+        for d in generate_weekday_dates(now, end_date):
+            start_dt = datetime(d.year, d.month, d.day, schedule_start_hour, 0, 0, tzinfo=tz)
+            end_dt = datetime(d.year, d.month, d.day, schedule_end_hour, 0, 0, tzinfo=tz)
+
+            # Select a location randomly (or you can pick based on other criteria)
+            location = random.choice(locations)
+
+            new_schedule = Schedule(
+                associate_id=associate.id,
+                location_id=location.id,
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+            )
+
+            # Insert schedule into the DB
+            with Session(db.engine) as session:
+                session.add(new_schedule)
                 session.commit()
+                session.refresh(new_schedule)
+
+            schedule_duration_hours = (end_dt - start_dt).seconds // 3600
+
+            # Create random appointments within this schedule
+            for hour_offset in range(schedule_duration_hours):
+                # 50% chance to create an appointment
+                if random.random() < 0.15:
+                    appt_start = start_dt + timedelta(hours=hour_offset)
+                    # Length 1 to 3 hours
+                    duration = random.randint(1, 3)
+                    appt_end = appt_start + timedelta(hours=duration)
+
+                    # Check if the appointment fits entirely in the schedule
+                    if appt_end > end_dt:
+                        # Skip if it doesn't fit
+                        continue
+
+                    event: Event = {
+                        "summary": f"Appointment with Associate {associate.id}",
+                        "description": "Generated appointment",
+                        "start": {"dateTime": appt_start.isoformat(), "timeZone": "UTC"},
+                        "end": {"dateTime": appt_end.isoformat(), "timeZone": "UTC"},
+                        "location": f"{location.description}",  # Location description or other info
+                        "reminders": {
+                            "useDefault": True,
+                            "overrides": []
+                        },
+                        # You can optionally add attendees or other fields:
+                        # "attendees": [{"email": "client@example.com"}]
+                    }
+
+                    # Insert event into Google Calendar
+                    created_event = calendar.add_event(calendar_id=calendar_id, event=event)
+                    print(f"Created event: {created_event['summary']} from {appt_start} to {appt_end} in calendar {calendar_id} at location {location.description}")
 
 
 if __name__ == "__main__":
-    generate_appointments()
+    create_schedules_and_appointments()

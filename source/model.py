@@ -1,8 +1,11 @@
 import json
-from datetime import date, datetime, time
+from datetime import datetime
 
+import pytz
 from pydantic import BaseModel
+from typing_extensions import override
 
+from .calendar import Event
 from .database import Message
 
 
@@ -14,6 +17,7 @@ class ConversationInitRequest(BaseModel):
     """
 
     business_id: int
+    client_timezone: str
 
 
 class ConversationInitResponse(BaseModel):
@@ -46,14 +50,20 @@ class AvailabilityWindow(BaseModel):
         timedelta = self.end_time - self.start_time
         return abs(timedelta.total_seconds()) // 60
 
+    @override
     def __str__(self) -> str:
         return (
             "Availability Window:\n"
-            f"\tDate: {self.start_time.strftime('%A, %B %d, %Y')}\n"
-            f"\tStart Time: {self.start_time.strftime('%H:%M:%S')}\n"
-            f"\tEnd Time: {self.end_time.strftime('%H:%M:%S')}\n"
-            f"\tAssociate ID: {self.associate_id}"
+            + f"\tDate: {self.start_time.strftime('%A, %B %d, %Y')}\n"
+            + f"\tStart Time: {self.start_time.strftime('%I:%M:%S %p %Z')}\n"
+            + f"\tEnd Time: {self.end_time.strftime('%I:%M:%S %p %Z')}\n"
+            + f"\tAssociate ID: {self.associate_id}"
         )
+
+    def localize(self, timezone: str) -> None:
+        tz = pytz.timezone(timezone)
+        self.start_time = self.start_time.astimezone(tz)
+        self.end_time = self.end_time.astimezone(tz)
 
 
 class CheckAvailabilityRequest(BaseModel):
@@ -68,9 +78,8 @@ class GetProductLocationsRequest(BaseModel):
 class SetAppointmentsRequest(BaseModel):
     location_id: int
     associate_id: int
-    day: date
-    start_time: time
-    end_time: time
+    start_datetime: datetime
+    end_datetime: datetime
     summary: str
     attendee_emails: list[str]
     description: str = ""
@@ -81,15 +90,10 @@ class SetAppointmentsRequest(BaseModel):
         data = json.loads(json_str)
 
         # Convert string date and time to appropriate types
-        data["day"] = datetime.strptime(
-            data["day"], "%Y-%m-%d"
-        ).date()  # Expecting 'YYYY-MM-DD' format
-        data["start_time"] = datetime.strptime(
-            data["start_time"], "%H:%M:%S"
-        ).time()  # Expecting 'HH:MM:SS' format
-        data["end_time"] = datetime.strptime(
-            data["end_time"], "%H:%M:%S"
-        ).time()  # Same for end time
+        data["start_datetime"] = start = datetime.fromisoformat(data["start_datetime"])
+        data["end_datetime"] = end = datetime.fromisoformat(data["end_datetime"])  # Same for end time
+        assert start.tzinfo is not None, "Start datetime must be timezone-aware."
+        assert end.tzinfo is not None, "End datetime must be timezone-aware."
 
         # Create the SetAppointmentsRequest object
         request = SetAppointmentsRequest(**data)
@@ -103,3 +107,28 @@ class GetProductPhotosRequest(BaseModel):
 
 class GetPhotoRequest(BaseModel):
     photo_id: int
+
+
+class Appointment(BaseModel):
+    start: datetime
+    end: datetime
+
+    @classmethod
+    def from_event(cls, event: Event) -> "Appointment":
+        event_start = event["start"]
+        dt = datetime.fromisoformat(event_start["dateTime"])
+        if not dt.tzinfo:
+            tz = pytz.timezone(event_start["timeZone"])
+            event_start_dtz = tz.localize(dt)
+        else:
+            event_start_dtz = dt
+
+        event_end = event["end"]
+        dt = datetime.fromisoformat(event_end["dateTime"])
+        if not dt.tzinfo:
+            tz = pytz.timezone(event_end["timeZone"])
+            event_end_dtz = tz.localize(dt)
+        else:
+            event_end_dtz = dt
+
+        return cls(start=event_start_dtz, end=event_end_dtz)

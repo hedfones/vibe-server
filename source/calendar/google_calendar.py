@@ -1,6 +1,9 @@
 import pickle
+from datetime import datetime
 from pathlib import Path
 
+from google.auth.credentials import Credentials
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
@@ -20,6 +23,11 @@ class GoogleCalendar:
         self.token_path: Path = Path(token_path)
         self.credentials_path: Path = Path(credentials_path)
         self.service: Resource = self.authenticate()
+
+    def refresh(self) -> Credentials:
+        flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, SCOPES)
+        creds = flow.run_local_server(port=63103)
+        return creds
 
     # Authenticate and build the service
     def authenticate(self) -> Resource:
@@ -48,12 +56,12 @@ class GoogleCalendar:
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                try:
+                    creds.refresh(Request())
+                except RefreshError:
+                    creds = self.refresh()
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials_path, SCOPES
-                )
-                creds = flow.run_local_server(port=63103)
+                creds = self.refresh()
             with self.token_path.open("wb") as token:
                 pickle.dump(creds, token)
         return build("calendar", "v3", credentials=creds)
@@ -88,33 +96,32 @@ class GoogleCalendar:
         Returns:
             Dict[str, Any]: The created event details.
         """
-        created_event = (
-            self.service.events().insert(calendarId=calendar_id, body=event).execute()
-        )
+        created_event = self.service.events().insert(calendarId=calendar_id, body=event).execute()
         print(f"Event created: {created_event.get('htmlLink')}")
         return created_event
 
-    def read_appointments(
-        self, calendar_id: str, time_min: str, time_max: str
-    ) -> list[Event]:
+    def read_appointments(self, calendar_id: str, time_min: datetime, time_max: datetime) -> list[Event]:
         """
         Reads existing appointments from a specific calendar within a time range.
 
         Args:
             service (Resource): The authenticated Google Calendar API service object.
             calendar_id (str): The ID of the calendar to read events from.
-            time_min (str): The start of the time range in ISO 8601 format (e.g., "2024-11-25T00:00:00Z").
-            time_max (str): The end of the time range in ISO 8601 format (e.g., "2024-11-30T23:59:59Z").
+            time_min (datetime): The start of the time range as a datetime object.
+            time_max (datetime): The end of the time range as a datetime object.
 
         Returns:
             List[Dict[str, Any]]: A list of event details within the specified time range.
         """
+        assert time_min.tzinfo is not None
+        assert time_max.tzinfo is not None
+
         events_result = (
             self.service.events()
             .list(
                 calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
+                timeMin=time_min.isoformat(),
+                timeMax=time_max.isoformat(),
                 singleEvents=True,
                 orderBy="startTime",
             )
@@ -159,3 +166,43 @@ class GoogleCalendar:
             calendar_info.append({"summary": summary, "id": calendar_id})
 
         return calendar_info
+
+    def delete_all_events(self, calendar_id: str) -> None:
+        """
+        Deletes all events from a specified calendar.
+
+        Args:
+            calendar_id (str): The ID of the calendar from which to delete all events.
+        """
+        # Set up a boolean to track if there are more events to delete
+        page_token = None
+        while True:
+            # Fetch events in the calendar
+            events_result = (
+                self.service.events()
+                .list(
+                    calendarId=calendar_id,
+                    pageToken=page_token,
+                    singleEvents=True,
+                    orderBy="startTime",
+                )
+                .execute()
+            )
+
+            events = events_result.get("items", [])
+            if not events:
+                print("No more events found to delete.")
+                break
+
+            # Loop through each event and delete it
+            for event in events:
+                try:
+                    self.service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
+                    print(f"Deleted event: {event['summary']} | ID: {event['id']}")
+                except Exception as e:
+                    print(f"An error occurred while deleting event {event['id']}: {e}")
+
+            # Check for more pages of events
+            page_token = events_result.get("nextPageToken")
+            if not page_token:
+                break
