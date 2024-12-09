@@ -40,6 +40,7 @@ class Assistant:
         self,
         credentials: OpenAICredentials,
         assistant_id: str,
+        client_timezone: str,
         thread_id: str | None = None,
     ) -> None:
         """
@@ -51,6 +52,7 @@ class Assistant:
             thread_id (str | None): The ID of the thread to retrieve or create a new one if None.
         """
         self.assistant_id: str = assistant_id
+        self.client_timezone: str = client_timezone
 
         self.client: OpenAI = OpenAI(
             api_key=credentials.api_key,
@@ -102,7 +104,7 @@ class Assistant:
 
             if tool.function.name == "check_availability":
                 request = CheckAvailabilityRequest.model_validate(arguments)
-                availability = get_availability(request.product_id, request.location_id)
+                availability = get_availability(request.product_id, request.location_id, self.client_timezone)
                 body = "\n".join(map(str, availability))
             elif tool.function.name == "get_product_locations":
                 request = GetProductLocationsRequest.model_validate(arguments)

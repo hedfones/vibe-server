@@ -17,6 +17,7 @@ class ConversationInitRequest(BaseModel):
     """
 
     business_id: int
+    client_timezone: str
 
 
 class ConversationInitResponse(BaseModel):
@@ -54,10 +55,15 @@ class AvailabilityWindow(BaseModel):
         return (
             "Availability Window:\n"
             + f"\tDate: {self.start_time.strftime('%A, %B %d, %Y')}\n"
-            + f"\tStart Time: {self.start_time.strftime('%H:%M:%S')} {self.start_time.tzinfo or 'UTC'}\n"
-            + f"\tEnd Time: {self.end_time.strftime('%H:%M:%S')} {self.end_time.tzinfo or 'UTC'}\n"
+            + f"\tStart Time: {self.start_time.strftime('%I:%M:%S %p %Z')}\n"
+            + f"\tEnd Time: {self.end_time.strftime('%I:%M:%S %p %Z')}\n"
             + f"\tAssociate ID: {self.associate_id}"
         )
+
+    def localize(self, timezone: str) -> None:
+        tz = pytz.timezone(timezone)
+        self.start_time = self.start_time.astimezone(tz)
+        self.end_time = self.end_time.astimezone(tz)
 
 
 class CheckAvailabilityRequest(BaseModel):
@@ -84,8 +90,10 @@ class SetAppointmentsRequest(BaseModel):
         data = json.loads(json_str)
 
         # Convert string date and time to appropriate types
-        data["start_datetime"] = datetime.fromisoformat(data["start_datetime"])
-        data["end_datetime"] = datetime.fromisoformat(data["end_datetime"])  # Same for end time
+        data["start_datetime"] = start = datetime.fromisoformat(data["start_datetime"])
+        data["end_datetime"] = end = datetime.fromisoformat(data["end_datetime"])  # Same for end time
+        assert start.tzinfo is not None, "Start datetime must be timezone-aware."
+        assert end.tzinfo is not None, "End datetime must be timezone-aware."
 
         # Create the SetAppointmentsRequest object
         request = SetAppointmentsRequest(**data)

@@ -33,7 +33,7 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
 
 
-def get_availability(product_id: int, location_id: int) -> list[AvailabilityWindow]:
+def get_availability(product_id: int, location_id: int, timezone: str) -> list[AvailabilityWindow]:
     products: list[Product] = db.select_by_id(Product, product_id)
     if not products:
         raise HTTPException(404, detail=f"Unable to find product by id `{product_id}`")
@@ -49,6 +49,9 @@ def get_availability(product_id: int, location_id: int) -> list[AvailabilityWind
             detail="Unable to find availabilities associated with location "
             + f"`{location_id}` and product `{product.id}`.",
         )
+
+    for availability in availabilities:
+        availability.localize(timezone)
 
     return availabilities
 
@@ -77,8 +80,8 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     location = db.get_location_by_id(request.location_id)
     assert location is not None, f"Location not found for ID `{request.location_id}`."
 
-    start_datetime = pytz.utc.localize(request.start_datetime)
-    end_datetime = pytz.utc.localize(request.end_datetime)
+    start_datetime = request.start_datetime.astimezone(pytz.utc)
+    end_datetime = request.end_datetime.astimezone(pytz.utc)
 
     if business.calendar_service == "google":
         calendar_id = business.calendar_service_id

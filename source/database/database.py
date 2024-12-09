@@ -51,9 +51,9 @@ class DatabaseService:
             business = session.exec(stmt).first()
         return business
 
-    def create_conversation(self, business: Business, thread_id: str) -> Conversation:
+    def create_conversation(self, business: Business, client_timezone: str, thread_id: str) -> Conversation:
         with Session(self.engine) as session:
-            conversation = Conversation(business_id=business.id, thread_id=thread_id)
+            conversation = Conversation(business_id=business.id, client_timezone=client_timezone, thread_id=thread_id)
             session.add(conversation)
             session.commit()
             session.refresh(conversation)

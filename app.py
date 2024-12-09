@@ -52,9 +52,7 @@ def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
 
 
 @app.post("/initialize-conversation/", response_model=ConversationInitResponse)
-def initialize_conversation(
-    payload: ConversationInitRequest,
-) -> ConversationInitResponse:
+def initialize_conversation(payload: ConversationInitRequest) -> ConversationInitResponse:
     """
     Initialize a new conversation for a specific business.
 
@@ -69,14 +67,11 @@ def initialize_conversation(
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
 
     # create thread
-    assistant = Assistant(openai_creds, business.assistant_id)
-    conversation = db.create_conversation(business, assistant.thread.id)
+    assistant = Assistant(openai_creds, business.assistant_id, payload.client_timezone)
+    conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.id)
     # assistant.add_message({"role": "system", "content": business.context})
     assistant.add_message({"role": "assistant", "content": business.start_message})
 
-    # get first message from assistant
-    # TODO: in future, this intro message should be a static first message for
-    #   each assistant
     assistant_first_message = Message(
         conversation_id=conversation.id,
         role="assistant",
@@ -110,7 +105,7 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
         raise HTTPException(404, f"Business with ID {conversation.business_id} not found.")
     new_messages.append(Message(conversation_id=conversation.id, role="user", content=payload.content))
 
-    assistant = Assistant(openai_creds, business.assistant_id, conversation.thread_id)
+    assistant = Assistant(openai_creds, business.assistant_id, conversation.client_timezone, conversation.thread_id)
     message: AssistantMessage = {"role": "user", "content": payload.content}
     assistant.add_message(message)
     message_response = assistant.retrieve_response()
