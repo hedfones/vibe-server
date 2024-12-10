@@ -1,0 +1,52 @@
+{
+  "name": "set_appointment",
+  "description": "Sets an appointment in the associate's calendar",
+  "strict": true,
+  "parameters": {
+    "type": "object",
+    "required": [
+      "location_id",
+      "associate_id",
+      "start_datetime",
+      "end_datetime",
+      "summary",
+      "attendee_emails",
+      "description"
+    ],
+    "properties": {
+      "location_id": {
+        "type": "number",
+        "description": "ID of the location where the appointment will take place"
+      },
+      "associate_id": {
+        "type": "number",
+        "description": "ID of the associate for whom the appointment is being set"
+      },
+      "start_datetime": {
+        "type": "string",
+        "description": "Start time of the appointment in ISO 8601 format (e.g., '2023-10-05T15:00:00+00:00' for UTC or '2023-10-05T10:00:00-05:00' for EST)."
+      },
+      "end_datetime": {
+        "type": "string",
+        "description": "End time of the appointment in ISO 8601 format (e.g., '2023-10-05T15:00:00+00:00' for UTC or '2023-10-05T10:00:00-05:00' for EST)."
+      },
+      "summary": {
+        "type": "string",
+        "description": "A brief summary of the appointment"
+      },
+      "attendee_emails": {
+        "type": "array",
+        "description": "List of emails of attendees for the appointment",
+        "items": {
+          "type": "string",
+          "description": "Email address of an attendee"
+        }
+      },
+      "description": {
+        "type": "string",
+        "description": "Detailed description of the appointment"
+      }
+    },
+    "additionalProperties": false
+  }
+}

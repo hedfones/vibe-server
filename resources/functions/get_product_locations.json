@@ -1,0 +1,16 @@
+{
+  "name": "get_product_locations",
+  "description": "The function accepts a product id integer and returns a list of ids and descriptions of available locations for that product or service.",
+  "strict": true,
+  "parameters": {
+    "type": "object",
+    "required": ["product_id"],
+    "properties": {
+      "product_id": {
+        "type": "integer",
+        "description": "The unique identifier of the product"
+      }
+    },
+    "additionalProperties": false
+  }
+}

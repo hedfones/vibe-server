@@ -1,5 +1,4 @@
 import json
-import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -14,11 +13,14 @@ from .functions import (
     get_availability,
     get_product_list,
     get_product_locations,
+    get_product_photos,
     set_appointment,
 )
+from .logger import logger
 from .model import (
     CheckAvailabilityRequest,
     GetProductLocationsRequest,
+    GetProductPhotosRequest,
     SetAppointmentsRequest,
 )
 
@@ -31,7 +33,7 @@ class OpenAICredentials:
 
 
 class AssistantMessage(TypedDict):
-    role: Literal["assistant", "user"]
+    role: Literal["assistant", "user", "system"]
     content: str
 
 
@@ -40,6 +42,7 @@ class Assistant:
         self,
         credentials: OpenAICredentials,
         assistant_id: str,
+        client_timezone: str,
         thread_id: str | None = None,
     ) -> None:
         """
@@ -51,15 +54,14 @@ class Assistant:
             thread_id (str | None): The ID of the thread to retrieve or create a new one if None.
         """
         self.assistant_id: str = assistant_id
+        self.client_timezone: str = client_timezone
 
         self.client: OpenAI = OpenAI(
             api_key=credentials.api_key,
             organization=credentials.organization,
             project=credentials.project,
         )
-        self.assistant: assistant.Assistant = self.client.beta.assistants.retrieve(
-            assistant_id
-        )
+        self.assistant: assistant.Assistant = self.client.beta.assistants.retrieve(assistant_id)
 
         self.thread: thread.Thread
         if thread_id:
@@ -84,9 +86,7 @@ class Assistant:
         Args:
             message (AssistantMessage): The message to be added.
         """
-        _ = self.client.beta.threads.messages.create(
-            thread_id=self.thread.id, **message
-        )
+        _ = self.client.beta.threads.messages.create(thread_id=self.thread.id, **message)
         return
 
     def get_tool_outputs(self, run: Run) -> list[ToolOutput]:
@@ -94,21 +94,19 @@ class Assistant:
         tool_outputs: list[ToolOutput] = []
 
         if run.required_action is None:
-            logging.warning("No required action detected for run.")
+            logger.warning("No required action detected for run.")
             return tool_outputs
 
         # Loop through each tool in the required action section
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            logging.info(
-                f"Running tool {tool.function.name} with arguments {tool.function.arguments}"
-            )
+            logger.info(f"Running tool {tool.function.name} with arguments {tool.function.arguments}")
             arguments: dict[str, int | str | list[str]] = {}
             if argument_string := tool.function.arguments:
                 arguments = json.loads(argument_string)
 
             if tool.function.name == "check_availability":
                 request = CheckAvailabilityRequest.model_validate(arguments)
-                availability = get_availability(request.product_id, request.location_id)
+                availability = get_availability(request.product_id, request.location_id, self.client_timezone)
                 body = "\n".join(map(str, availability))
             elif tool.function.name == "get_product_locations":
                 request = GetProductLocationsRequest.model_validate(arguments)
@@ -118,10 +116,11 @@ class Assistant:
             elif tool.function.name == "set_appointment":
                 request = SetAppointmentsRequest.parse_json_to_request(argument_string)
                 body = set_appointment(request)
+            elif tool.function.name == "get_product_photos":
+                request = GetProductPhotosRequest.model_validate(arguments)
+                body = get_product_photos(request.product_id)
             else:
-                raise Exception(
-                    "Unexpected tool function called: {}".format(tool.function.name)
-                )
+                raise Exception("Unexpected tool function called: {}".format(tool.function.name))
 
             tool_outputs.append({"tool_call_id": tool.id, "output": body})
 
@@ -139,15 +138,15 @@ class Assistant:
         """
         if not run:
             run = self.client.beta.threads.runs.create_and_poll(
-                thread_id=self.thread.id, assistant_id=self.assistant.id
+                thread_id=self.thread.id,
+                assistant_id=self.assistant.id,
+                tool_choice="required",
             )
 
         timeout_timestamp = datetime.now() + timedelta(seconds=30)
         while datetime.now() < timeout_timestamp:
             if run.status == "completed":
-                messages = self.client.beta.threads.messages.list(
-                    thread_id=self.thread.id
-                )
+                messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
 
                 message = messages.data[0]
                 message_content = message.content[0]
@@ -165,6 +164,6 @@ class Assistant:
             elif run.status == "failed":
                 raise Exception(f"Assistant run failed with status: {run.status}")
             else:
-                logging.warning(f"{run.status=}")
+                logger.warning(f"{run.status=}")
             time.sleep(0.25)
         raise TimeoutError("Assistant took too long to respond.")
