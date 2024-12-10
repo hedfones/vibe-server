@@ -127,7 +127,7 @@ class DatabaseService:
 
     def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
         with Session(self.engine) as session:
-            stmt = select(Product).join(Business).where(Business.assistant_id == assistant_id)
+            stmt = select(Product).join(Business).where(Business.assistant.openai_assistant_id == assistant_id)
             results = session.exec(stmt).all()
         return list(results)
 

@@ -1,7 +1,9 @@
+import os
 import random
 from datetime import datetime, timedelta
 import pytz
 from sqlmodel import Session
+from dotenv import load_dotenv
 
 # Assuming you've imported or defined:
 # DatabaseService, PostgresCredentials, Business, Associate, Schedule, Product
@@ -10,6 +12,7 @@ from source.calendar import Event  # Using the provided Event TypedDict
 from source import db, get_calendar_by_business_id
 from source.database import Schedule
 
+_ = load_dotenv(override=True)
 calendar = get_calendar_by_business_id(1)
 
 def generate_weekday_dates(start_date: datetime, end_date: datetime):
