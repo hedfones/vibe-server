@@ -26,8 +26,7 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
     if business.calendar_service == "google":
         calendar_id = business.calendar_service_id
         return GoogleCalendar(
-            secrets.get(f"GOOGLE_TOKEN_{calendar_id}") or "",
-            secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
+            service_account_base64=secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}") or ""
         )  # TODO: be more thoughtful about this credential process
     else:
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
@@ -86,8 +85,7 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     if business.calendar_service == "google":
         calendar_id = business.calendar_service_id
         calendar = GoogleCalendar(
-            secrets.get(f"GOOGLE_TOKEN_{calendar_id}") or "",
-            secrets.get(f"GOOGLE_CREDENTIALS_{calendar_id}") or "",
+            service_account_base64=secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}") or "",
         )  # TODO: be more thoughtful about this credential process
     else:
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")

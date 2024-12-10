@@ -13,9 +13,7 @@ class FileManager:
         self.file_store_path: Path = Path(files_directory)
 
         if not self.file_store_path.exists():
-            logging.info(
-                f"File store at {self.file_store_path} does not exist. Creating now."
-            )
+            logging.info(f"File store at {self.file_store_path} does not exist. Creating now.")
             self.file_store_path.mkdir(parents=True)
 
     def get_file(self, file_uid: str) -> Path:
