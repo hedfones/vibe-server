@@ -10,9 +10,6 @@ utc = pytz.UTC
 
 class Business(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
-    start_message: str
-    instructions: str
-    context: str
     calendar_service: str
     calendar_service_id: str
     created_at: datetime = Field(

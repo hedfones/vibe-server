@@ -73,12 +73,12 @@ def initialize_conversation(payload: ConversationInitRequest) -> ConversationIni
     assistant = Assistant(openai_creds, business.assistant.openai_assistant_id, payload.client_timezone)
     conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.id)
     # assistant.add_message({"role": "system", "content": business.context})
-    assistant.add_message({"role": "assistant", "content": business.start_message})
+    assistant.add_message({"role": "assistant", "content": business.assistant.start_message})
 
     assistant_first_message = Message(
         conversation_id=conversation.id,
         role="assistant",
-        content=business.start_message,
+        content=business.assistant.start_message,
     )
     db.insert_messages([assistant_first_message])
 
