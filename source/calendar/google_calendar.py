@@ -60,6 +60,29 @@ class GoogleCalendar:
         print(f"Calendar created: {created_calendar['id']}")
         return created_calendar["id"]
 
+    def share_calendar(self, calendar_id: str, email: str, role: str = "reader") -> None:
+        """
+        Shares the specified calendar with a given email address.
+
+        Args:
+            calendar_id (str): The ID of the calendar to share.
+            email (str): The email address with which to share the calendar.
+            role (str): The role assigned to the email address ('reader', 'writer', 'owner').
+        """
+        rule = {
+            "role": role,
+            "scope": {
+                "type": "user",
+                "value": email,
+            },
+        }
+
+        try:
+            self.service.acl().insert(calendarId=calendar_id, body=rule).execute()
+            print(f"Shared calendar {calendar_id} with {email} as {role}.")
+        except Exception as e:
+            print(f"An error occurred while sharing the calendar: {e}")
+
     def add_event(self, calendar_id: str, event: Event) -> Event:
         """
         Adds an event to a specific calendar.
