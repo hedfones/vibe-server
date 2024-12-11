@@ -132,3 +132,7 @@ class Appointment(BaseModel):
             event_end_dtz = dt
 
         return cls(start=event_start_dtz, end=event_end_dtz)
+
+
+class UpdateAssistantRequest(BaseModel):
+    business_id: int

@@ -6,6 +6,7 @@ from sqlalchemy import Engine, create_engine, desc
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
+    Assistant,
     Associate,
     AssociateProductLink,
     Business,
@@ -127,7 +128,11 @@ class DatabaseService:
 
     def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
         with Session(self.engine) as session:
-            stmt = select(Product).join(Business).where(Business.assistant_id == assistant_id)
+            stmt = (
+                select(Product)
+                .join(Assistant, Assistant.business_id == Product.business_id)
+                .where(Assistant.openai_assistant_id == assistant_id)
+            )
             results = session.exec(stmt).all()
         return list(results)
 
