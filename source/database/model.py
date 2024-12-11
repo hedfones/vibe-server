@@ -10,6 +10,7 @@ utc = pytz.UTC
 
 class Business(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
+    name: str
     calendar_service: str
     calendar_service_id: str
     created_at: datetime = Field(
@@ -34,6 +35,7 @@ class Assistant(SQLModel, table=True):
     start_message: str
     instructions: str
     context: str
+    model: str
     uses_function_check_availability: bool = False
     uses_function_get_product_list: bool = False
     uses_function_get_product_locations: bool = False

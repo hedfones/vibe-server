@@ -13,6 +13,7 @@ from .model import (
     ConversationInitRequest,
     ConversationInitResponse,
     GetPhotoRequest,
+    UpdateAssistantRequest,
     UserMessageRequest,
     UserMessageResponse,
 )
@@ -37,4 +38,5 @@ __all__ = [
     "GetPhotoRequest",
     "get_calendar_by_business_id",
     "logger",
+    "UpdateAssistantRequest",
 ]

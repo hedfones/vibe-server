@@ -1,6 +1,11 @@
+import json
+from pathlib import Path
+
+import yaml
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from openai.types.shared_params.function_definition import FunctionDefinition
 
 from source import (
     Assistant,
@@ -17,6 +22,7 @@ from source import (
     db,
     logger,
 )
+from source.model import UpdateAssistantRequest
 
 app = FastAPI()
 # Add CORSMiddleware to allow requests from the client
@@ -129,3 +135,31 @@ def get_photo(payload: GetPhotoRequest) -> FileResponse:
         raise HTTPException(404, f"Photo with ID {payload.photo_id} not found.")
     file = file_manager.get_file(photo.file_uid)
     return FileResponse(file, filename=file.name)
+
+
+@app.post("/update-assistant/")
+def update_assistant(payload: UpdateAssistantRequest) -> None:
+    business = db.get_business_by_id(payload.business_id)
+    if not business:
+        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+    assistant = Assistant(openai_creds, business.assistant.openai_assistant_id)
+    instructions = f"{business.assistant.instructions}\n\n{'-' * 80}\n\n{business.assistant.context}"
+    assistant_name = f"Vibe - {business.name}"
+
+    assistant_fields: dict[str, bool | str | int] = business.assistant.model_dump()
+
+    function_dir = Path("resources/functions")
+    with open(function_dir / "function_mapping.yaml", "r") as f:
+        function_fields: dict[str, str] = yaml.safe_load(f)
+
+    function_definitions: list[FunctionDefinition] = []
+    for key, filename in function_fields.items():
+        do_use_function = assistant_fields[key]
+        if not do_use_function:
+            continue
+        filepath = function_dir / filename
+        with filepath.open("r") as f:
+            function_definition: FunctionDefinition = json.load(f)
+        function_definitions.append(function_definition)
+
+    assistant.update_assistant(instructions, assistant_name, business.assistant.model, function_definitions)
