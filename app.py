@@ -77,7 +77,7 @@ def initialize_conversation(payload: ConversationInitRequest) -> ConversationIni
 
     # create thread
     assistant = Assistant(openai_creds, business.assistant.openai_assistant_id, payload.client_timezone)
-    conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.id)
+    conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.thread_id)
     # assistant.add_message({"role": "system", "content": business.context})
     assistant.add_message({"role": "assistant", "content": business.assistant.start_message})
 
