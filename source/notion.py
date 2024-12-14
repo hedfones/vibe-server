@@ -2,32 +2,35 @@ from typing import Any
 
 from notion_client import Client
 
+from .model import NotionPage
+
 
 class NotionService:
     def __init__(self, auth_token: str):
         """Initialize the Notion service with an authentication token."""
         self.client: Client = Client(auth=auth_token)
 
-    def get_page_content(self, page_id: str) -> str:
+    def get_page_content(self, page_id: str) -> list[NotionPage]:
         """Get the content of a Notion page and its children as markdown."""
         # Remove any dashes from the page ID if present
         page_id = page_id.replace("-", "")
-
         # Get all blocks for the page
         blocks = self.get_all_blocks(page_id)
+        # Convert blocks to NotionPage and markdown
+        pages = self._blocks_to_notion_pages(blocks)
+        return pages  # Returning the list of NotionPage instead of markdown
 
-        # Convert blocks to markdown
-        markdown = self._blocks_to_markdown(blocks)
+    def get_all_blocks(self, block_id: str, processed: set[str] | None = None) -> list[dict[str, Any]]:
+        """Recursively get all blocks for a page, including nested blocks and databases."""
+        if processed is None:
+            processed = set()
 
-        return markdown
-
-    def get_all_blocks(self, block_id: str) -> list[dict[str, Any]]:
-        """Recursively get all blocks for a page, including nested blocks."""
         blocks = []
 
         # Get the initial blocks
         response = self.client.blocks.children.list(block_id)
         blocks.extend(response["results"])
+        processed.add(block_id)
 
         # Continue paginating if there are more blocks
         while response.get("has_more", False):
@@ -36,68 +39,69 @@ class NotionService:
 
         # Recursively get child blocks
         for block in blocks:
+            block_id = block["id"]
+            if block_id in processed:
+                continue
+
             if block["has_children"]:
-                child_blocks = self.get_all_blocks(block["id"])
+                child_blocks = self.get_all_blocks(block_id, processed)
                 block["children"] = child_blocks
 
         return blocks
 
-    def _blocks_to_markdown(self, blocks: list[dict[str, Any]], level: int = 0) -> str:
-        """Convert Notion blocks to markdown format."""
-        markdown: list[str] = []
+    def _blocks_to_notion_pages(self, blocks: list[dict[str, Any]]) -> list[NotionPage]:
+        """Convert Notion blocks to NotionPage objects."""
+        notion_pages: list[NotionPage] = []
 
         for block in blocks:
+            page = NotionPage(markdown="", children=[])  # Initialize with empty markdown and children
+
             block_type: str = block["type"]
 
+            # Generate markdown content
             if block_type == "paragraph":
-                text = self._get_rich_text(block["paragraph"]["rich_text"])
-                if text:
-                    markdown.append(f"{text}\n")
+                page.markdown = self._get_rich_text(block["paragraph"]["rich_text"])
 
             elif block_type == "heading_1":
-                text = self._get_rich_text(block["heading_1"]["rich_text"])
-                markdown.append(f"# {text}\n")
+                page.markdown = f"# {self._get_rich_text(block['heading_1']['rich_text'])}"
 
             elif block_type == "heading_2":
-                text = self._get_rich_text(block["heading_2"]["rich_text"])
-                markdown.append(f"## {text}\n")
+                page.markdown = f"## {self._get_rich_text(block['heading_2']['rich_text'])}"
 
             elif block_type == "heading_3":
-                text = self._get_rich_text(block["heading_3"]["rich_text"])
-                markdown.append(f"### {text}\n")
+                page.markdown = f"### {self._get_rich_text(block['heading_3']['rich_text'])}"
 
             elif block_type == "bulleted_list_item":
-                text = self._get_rich_text(block["bulleted_list_item"]["rich_text"])
-                markdown.append(f"{'  ' * level}- {text}\n")
+                page.markdown = f"- {self._get_rich_text(block['bulleted_list_item']['rich_text'])}"
 
             elif block_type == "numbered_list_item":
-                text = self._get_rich_text(block["numbered_list_item"]["rich_text"])
-                markdown.append(f"{'  ' * level}1. {text}\n")
+                page.markdown = f"1. {self._get_rich_text(block['numbered_list_item']['rich_text'])}"
 
             elif block_type == "to_do":
                 text = self._get_rich_text(block["to_do"]["rich_text"])
                 checked: bool = block["to_do"]["checked"]
                 checkbox = "[x]" if checked else "[ ]"
-                markdown.append(f"{'  ' * level}- {checkbox} {text}\n")
+                page.markdown = f"{checkbox} {text}"
 
             elif block_type == "code":
                 text = self._get_rich_text(block["code"]["rich_text"])
                 language: str = block["code"].get("language", "")
-                markdown.append(f"```{language}\n{text}\n```\n")
+                page.markdown = f"```{language}\n{text}\n```"
 
             elif block_type == "quote":
-                text = self._get_rich_text(block["quote"]["rich_text"])
-                markdown.append(f"> {text}\n")
+                page.markdown = f"> {self._get_rich_text(block['quote']['rich_text'])}"
 
             elif block_type == "divider":
-                markdown.append("---\n")
+                page.markdown = "---"
 
-            # Handle child blocks recursively
+            # Handle child blocks recursively and add to NotionPage children
             if block.get("has_children") and "children" in block:
-                child_markdown = self._blocks_to_markdown(block["children"], level + 1)
-                markdown.append(child_markdown)
+                child_pages = self._blocks_to_notion_pages(block["children"])
+                page.children.extend(child_pages)
 
-        return "\n".join(markdown)
+            notion_pages.append(page)
+
+        return notion_pages
 
     def _get_rich_text(self, rich_text: list[dict[str, Any]]) -> str:
         """Extract text content from rich text objects."""

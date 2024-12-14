@@ -134,6 +134,11 @@ class Appointment(BaseModel):
         return cls(start=event_start_dtz, end=event_end_dtz)
 
 
+class NotionPage(BaseModel):
+    markdown: str
+    children: list["NotionPage"]
+
+
 class SyncNotionRequest(BaseModel):
     business_id: int
 
