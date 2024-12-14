@@ -53,6 +53,16 @@ class DatabaseService:
             business = session.exec(stmt).first()
         return business
 
+    def update_business_context(self, business_id: int, context: str) -> None:
+        """Update the context of a business."""
+        with Session(self.engine) as session:
+            stmt = select(Business).where(Business.id == business_id)
+            business = session.exec(stmt).first()
+            if business:
+                business.context = context
+                session.add(business)
+                session.commit()
+
     def create_conversation(self, business: Business, client_timezone: str, thread_id: str) -> Conversation:
         with Session(self.engine) as session:
             conversation = Conversation(business_id=business.id, client_timezone=client_timezone, thread_id=thread_id)

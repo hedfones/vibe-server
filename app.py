@@ -17,6 +17,8 @@ from source import (
     db,
     logger,
 )
+from source.model import SyncNotionRequest, SyncNotionResponse
+from source.notion import NotionService
 
 app = FastAPI()
 # Add CORSMiddleware to allow requests from the client
@@ -34,6 +36,7 @@ app.add_middleware(
 
 secrets = SecretsManager()
 file_manager = FileManager("./temp")
+notion_service = NotionService(secrets.get("NOTION_AUTH_TOKEN") or "")
 
 openai_creds = OpenAICredentials(
     api_key=secrets.get("OPENAI_API_KEY") or "",
@@ -127,3 +130,34 @@ def get_photo(payload: GetPhotoRequest) -> FileResponse:
         raise HTTPException(404, f"Photo with ID {payload.photo_id} not found.")
     file = file_manager.get_file(photo.file_uid)
     return FileResponse(file, filename=file.name)
+
+
+@app.post("/sync-notion/", response_model=SyncNotionResponse)
+def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
+    """
+    Sync Notion content for a business.
+
+    - **business_id**: The ID of the business to sync Notion content for
+
+    Returns the synced markdown content.
+
+    Raises HTTP 404 if the business is not found or if the Notion page ID is not set.
+    """
+    business = db.get_business_by_id(payload.business_id)
+    if not business:
+        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+
+    if not business.notion_page_id:
+        raise HTTPException(404, f"Business {payload.business_id} does not have a Notion page ID set.")
+
+    try:
+        # Get the content from Notion
+        markdown_content = notion_service.get_page_content(business.notion_page_id)
+
+        # Update the business context with the markdown content
+        db.update_business_context(payload.business_id, markdown_content)
+
+        return SyncNotionResponse(markdown_content=markdown_content)
+    except Exception as e:
+        logger.error(f"Error syncing Notion content for business {payload.business_id}: {str(e)}")
+        raise HTTPException(500, f"Error syncing Notion content: {str(e)}") from e
