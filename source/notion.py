@@ -6,7 +6,7 @@ from notion_client import Client
 class NotionService:
     def __init__(self, auth_token: str):
         """Initialize the Notion service with an authentication token."""
-        self.client = Client(auth=auth_token)
+        self.client: Client = Client(auth=auth_token)
 
     def get_page_content(self, page_id: str) -> str:
         """Get the content of a Notion page and its children as markdown."""

@@ -36,12 +36,12 @@ app.add_middleware(
 
 secrets = SecretsManager()
 file_manager = FileManager("./temp")
-notion_service = NotionService(secrets.get("NOTION_AUTH_TOKEN") or "")
+notion_service = NotionService(secrets.get("NOTION_AUTH_TOKEN"))
 
 openai_creds = OpenAICredentials(
-    api_key=secrets.get("OPENAI_API_KEY") or "",
-    project=secrets.get("OPENAI_PROJECT") or "",
-    organization=secrets.get("OPENAI_ORGANIZATION") or "",
+    api_key=secrets.get("OPENAI_API_KEY"),
+    project=secrets.get("OPENAI_PROJECT"),
+    organization=secrets.get("OPENAI_ORGANIZATION"),
 )
 
 

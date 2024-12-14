@@ -5,7 +5,8 @@ insert into
         instructions,
         calendar_service,
         calendar_service_id,
-        context
+        context,
+        notion_page_id
     )
 values
     (
@@ -14,7 +15,8 @@ values
         '',
         'google',
         '11',
-        ''
+        '',
+        '1470edea-8978-8084-ae5c-ecd8c81e6578'
     );
 
 insert into
