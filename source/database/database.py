@@ -6,6 +6,7 @@ from sqlalchemy import Engine, create_engine, desc
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
+    Assistant,
     Associate,
     AssociateProductLink,
     Business,
@@ -53,14 +54,14 @@ class DatabaseService:
             business = session.exec(stmt).first()
         return business
 
-    def update_business_context(self, business_id: int, context: str) -> None:
+    def update_assistant_context(self, business_id: int, context: str) -> None:
         """Update the context of a business."""
         with Session(self.engine) as session:
-            stmt = select(Business).where(Business.id == business_id)
-            business = session.exec(stmt).first()
-            if business:
-                business.context = context
-                session.add(business)
+            stmt = select(Assistant).where(Assistant.business_id == business_id)
+            assistant = session.exec(stmt).first()
+            if assistant:
+                assistant.context = context
+                session.add(assistant)
                 session.commit()
 
     def create_conversation(self, business: Business, client_timezone: str, thread_id: str) -> Conversation:
@@ -137,7 +138,11 @@ class DatabaseService:
 
     def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
         with Session(self.engine) as session:
-            stmt = select(Product).join(Business).where(Business.assistant_id == assistant_id)
+            stmt = (
+                select(Product)
+                .join(Assistant, Assistant.business_id == Product.business_id)
+                .where(Assistant.openai_assistant_id == assistant_id)
+            )
             results = session.exec(stmt).all()
         return list(results)
 

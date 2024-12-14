@@ -142,3 +142,7 @@ class SyncNotionResponse(BaseModel):
     """Response model for syncing Notion content."""
 
     markdown_content: str
+
+
+class UpdateAssistantRequest(BaseModel):
+    business_id: int

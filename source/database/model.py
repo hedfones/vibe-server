@@ -10,10 +10,7 @@ utc = pytz.UTC
 
 class Business(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
-    assistant_id: str
-    start_message: str
-    instructions: str
-    context: str
+    name: str
     calendar_service: str
     calendar_service_id: str
     notion_page_id: str
@@ -27,6 +24,30 @@ class Business(SQLModel, table=True):
     associates: list["Associate"] = Relationship(back_populates="business")
     locations: list["Location"] = Relationship(back_populates="business")
     photos: list["Photo"] = Relationship(back_populates="business")
+    assistant: "Assistant" = Relationship(
+        back_populates="business", sa_relationship_kwargs={"lazy": "joined", "uselist": False}
+    )
+
+
+class Assistant(SQLModel, table=True):
+    id: int = Field(default=None, primary_key=True)
+    business_id: int = Field(default=None, foreign_key="business.id")
+    openai_assistant_id: str
+    start_message: str
+    instructions: str
+    context: str
+    model: str
+    uses_function_check_availability: bool = False
+    uses_function_get_product_list: bool = False
+    uses_function_get_product_locations: bool = False
+    uses_function_get_product_photos: bool = False
+    uses_function_set_appointment: bool = False
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(utc),
+        sa_column=Column(DateTime, server_default=func.now()),
+    )
+
+    business: "Business" = Relationship(back_populates="assistant")
 
 
 class Conversation(SQLModel, table=True):
