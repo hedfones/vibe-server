@@ -1,16 +1,21 @@
 import random
 from datetime import datetime, timedelta
+
 import pytz
+from dotenv import load_dotenv
 from sqlmodel import Session
+
+from source import db, get_calendar_by_business_id
 
 # Assuming you've imported or defined:
 # DatabaseService, PostgresCredentials, Business, Associate, Schedule, Product
 # GoogleCalendar, and using the Event definition you provided
 from source.calendar import Event  # Using the provided Event TypedDict
-from source import db, get_calendar_by_business_id
 from source.database import Schedule
 
+_ = load_dotenv(override=True)
 calendar = get_calendar_by_business_id(1)
+
 
 def generate_weekday_dates(start_date: datetime, end_date: datetime):
     """Generate all weekday (Mon-Fri) dates between start_date (inclusive) and end_date (exclusive)."""
@@ -19,6 +24,7 @@ def generate_weekday_dates(start_date: datetime, end_date: datetime):
         if current.weekday() < 5:  # Monday=0, Sunday=6
             yield current
         current += timedelta(days=1)
+
 
 def create_schedules_and_appointments():
     tz = pytz.UTC
@@ -88,17 +94,16 @@ def create_schedules_and_appointments():
                         "start": {"dateTime": appt_start.isoformat(), "timeZone": "UTC"},
                         "end": {"dateTime": appt_end.isoformat(), "timeZone": "UTC"},
                         "location": f"{location.description}",  # Location description or other info
-                        "reminders": {
-                            "useDefault": True,
-                            "overrides": []
-                        },
+                        "reminders": {"useDefault": True, "overrides": []},
                         # You can optionally add attendees or other fields:
                         # "attendees": [{"email": "client@example.com"}]
                     }
 
                     # Insert event into Google Calendar
                     created_event = calendar.add_event(calendar_id=calendar_id, event=event)
-                    print(f"Created event: {created_event['summary']} from {appt_start} to {appt_end} in calendar {calendar_id} at location {location.description}")
+                    print(
+                        f"Created event: {created_event['summary']} from {appt_start} to {appt_end} in calendar {calendar_id} at location {location.description}"
+                    )
 
 
 if __name__ == "__main__":

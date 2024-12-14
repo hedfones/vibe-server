@@ -5,9 +5,11 @@ from datetime import datetime, timedelta
 from typing import Literal, TypedDict
 
 from openai import OpenAI
-from openai.types.beta import assistant, thread, threads
+from openai.types.beta import threads
+from openai.types.beta.function_tool_param import FunctionToolParam
 from openai.types.beta.threads import Run
 from openai.types.beta.threads.run_submit_tool_outputs_params import ToolOutput
+from openai.types.shared_params.function_definition import FunctionDefinition
 
 from .functions import (
     get_availability,
@@ -33,8 +35,23 @@ class OpenAICredentials:
 
 
 class AssistantMessage(TypedDict):
-    role: Literal["assistant", "user", "system"]
+    role: Literal["assistant", "user"]
     content: str
+
+
+class Thread:
+    def __init__(self, client: OpenAI, thread_id: str | None = None) -> None:
+        self._thread_id: str | None = thread_id
+        self.client: OpenAI = client
+
+    @property
+    def thread_id(self) -> str:
+        if not self._thread_id:
+            self._thread_id = self.client.beta.threads.create().id
+        return self._thread_id
+
+    def add_message(self, message: AssistantMessage) -> None:
+        _ = self.client.beta.threads.messages.create(thread_id=self.thread_id, **message)
 
 
 class Assistant:
@@ -42,7 +59,7 @@ class Assistant:
         self,
         credentials: OpenAICredentials,
         assistant_id: str,
-        client_timezone: str,
+        client_timezone: str = "UTC",
         thread_id: str | None = None,
     ) -> None:
         """
@@ -61,23 +78,8 @@ class Assistant:
             organization=credentials.organization,
             project=credentials.project,
         )
-        self.assistant: assistant.Assistant = self.client.beta.assistants.retrieve(assistant_id)
 
-        self.thread: thread.Thread
-        if thread_id:
-            self.thread = self.client.beta.threads.retrieve(thread_id)
-        else:
-            self.thread = self.client.beta.threads.create()
-
-    @property
-    def thread_id(self) -> str:
-        """
-        Returns the ID of the current thread.
-
-        Returns:
-            str: The ID of the thread.
-        """
-        return self.thread.id
+        self.thread: Thread = Thread(self.client)
 
     def add_message(self, message: AssistantMessage) -> None:
         """
@@ -86,7 +88,7 @@ class Assistant:
         Args:
             message (AssistantMessage): The message to be added.
         """
-        _ = self.client.beta.threads.messages.create(thread_id=self.thread.id, **message)
+        self.thread.add_message(message)
         return
 
     def get_tool_outputs(self, run: Run) -> list[ToolOutput]:
@@ -138,15 +140,15 @@ class Assistant:
         """
         if not run:
             run = self.client.beta.threads.runs.create_and_poll(
-                thread_id=self.thread.id,
-                assistant_id=self.assistant.id,
+                thread_id=self.thread.thread_id,
+                assistant_id=self.assistant_id,
                 tool_choice="required",
             )
 
         timeout_timestamp = datetime.now() + timedelta(seconds=30)
         while datetime.now() < timeout_timestamp:
             if run.status == "completed":
-                messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
+                messages = self.client.beta.threads.messages.list(thread_id=self.thread.thread_id)
 
                 message = messages.data[0]
                 message_content = message.content[0]
@@ -159,7 +161,7 @@ class Assistant:
             elif run.status == "requires_action":
                 tool_outputs = self.get_tool_outputs(run)
                 run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(
-                    thread_id=self.thread.id, run_id=run.id, tool_outputs=tool_outputs
+                    thread_id=self.thread.thread_id, run_id=run.id, tool_outputs=tool_outputs
                 )
             elif run.status == "failed":
                 raise Exception(f"Assistant run failed with status: {run.status}")
@@ -167,3 +169,19 @@ class Assistant:
                 logger.warning(f"{run.status=}")
             time.sleep(0.25)
         raise TimeoutError("Assistant took too long to respond.")
+
+    def update_assistant(self, instructions: str, name: str, model: str, tools: list[FunctionDefinition]) -> None:
+        """
+        It is currently limited to parameters instead of utilizing the built-in
+        parameters of the file search and code search because it was unable to
+        do functions and the other built-in tools in the same run. So to solve
+        that we are doing our own implementations of anything that we need. It
+        was able to do as many functions as necessary to accomplish a task.
+        """
+        tool_params: list[FunctionToolParam] = []
+        for definition in tools:
+            tool_param: FunctionToolParam = {"type": "function", "function": definition}
+            tool_params.append(tool_param)
+        _ = self.client.beta.assistants.update(
+            self.assistant_id, instructions=instructions, name=name, tools=tool_params, model=model
+        )

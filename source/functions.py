@@ -25,9 +25,7 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
 
     if business.calendar_service == "google":
         calendar_id = business.calendar_service_id
-        return GoogleCalendar(
-            service_account_base64=secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}") or ""
-        )  # TODO: be more thoughtful about this credential process
+        return GoogleCalendar(service_account_base64=secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}"))
     else:
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
 

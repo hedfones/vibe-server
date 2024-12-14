@@ -2,7 +2,7 @@
 #    uv pip compile requirements.in
 annotated-types==0.7.0
     # via pydantic
-anyio==4.6.2.post1
+anyio==4.7.0
     # via
     #   httpx
     #   openai
@@ -32,11 +32,11 @@ fastapi==0.115.6
     # via -r requirements.in
 fastapi-cli==0.0.6
     # via fastapi
-google-api-core==2.23.0
+google-api-core==2.24.0
     # via google-api-python-client
-google-api-python-client==2.154.0
+google-api-python-client==2.155.0
     # via -r requirements.in
-google-auth==2.36.0
+google-auth==2.37.0
     # via
     #   google-api-core
     #   google-api-python-client
@@ -62,9 +62,10 @@ httplib2==0.22.0
     #   google-auth-httplib2
 httptools==0.6.4
     # via uvicorn
-httpx==0.28.0
+httpx==0.28.1
     # via
     #   fastapi
+    #   notion-client
     #   openai
 idna==3.10
     # via
@@ -74,7 +75,7 @@ idna==3.10
     #   requests
 jinja2==3.1.4
     # via fastapi
-jiter==0.8.0
+jiter==0.8.2
     # via openai
 markdown-it-py==3.0.0
     # via rich
@@ -82,9 +83,11 @@ markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
+notion-client==2.2.1
+    # via -r requirements.in
 oauthlib==3.2.2
     # via requests-oauthlib
-openai==1.56.2
+openai==1.57.4
     # via -r requirements.in
 proto-plus==1.25.0
     # via google-api-core
@@ -135,7 +138,7 @@ rich==13.9.4
     # via
     #   rich-toolkit
     #   typer
-rich-toolkit==0.11.3
+rich-toolkit==0.12.0
     # via fastapi-cli
 rsa==4.9
     # via google-auth
@@ -159,6 +162,7 @@ typer==0.15.1
     # via fastapi-cli
 typing-extensions==4.12.2
     # via
+    #   anyio
     #   fastapi
     #   openai
     #   pydantic
@@ -177,7 +181,7 @@ uvicorn==0.32.1
     #   fastapi-cli
 uvloop==0.21.0
     # via uvicorn
-watchfiles==1.0.0
+watchfiles==1.0.3
     # via uvicorn
 websockets==14.1
     # via uvicorn
