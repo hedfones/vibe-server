@@ -1,7 +1,17 @@
 insert into
-    business (calendar_service, calendar_service_id, name)
+    business (
+        calendar_service,
+        calendar_service_id,
+        name,
+        notion_page_id
+    )
 values
-    ('google', '11', 'smith-and-co');
+    (
+        'google',
+        '11',
+        'smith-and-co',
+        '1470edea-8978-8084-ae5c-ecd8c81e6578'
+    );
 
 insert into
     assistant (

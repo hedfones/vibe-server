@@ -13,6 +13,7 @@ class Business(SQLModel, table=True):
     name: str
     calendar_service: str
     calendar_service_id: str
+    notion_page_id: str
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(utc),
         sa_column=Column(DateTime, server_default=func.now()),
