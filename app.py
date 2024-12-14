@@ -182,8 +182,13 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
     assistant_fields: dict[str, bool | str | int] = business.assistant.model_dump()
 
     function_dir = Path("resources/functions")
-    with open(function_dir / "function_mapping.yaml", "r") as f:
-        function_fields: dict[str, str] = yaml.safe_load(f)
+    try:
+        with open(function_dir / "function_mapping.yaml", "r") as f:
+            function_fields: dict[str, str] = yaml.safe_load(f)
+    except FileNotFoundError as e:
+        raise HTTPException(500, "Function mapping file not found.") from e
+    except yaml.YAMLError as e:
+        raise HTTPException(500, f"Error parsing function mapping file: {e}") from e
 
     function_definitions: list[FunctionDefinition] = []
     for key, filename in function_fields.items():
@@ -191,8 +196,14 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
         if not do_use_function:
             continue
         filepath = function_dir / filename
-        with filepath.open("r") as f:
-            function_definition: FunctionDefinition = json.load(f)
+        try:
+            with filepath.open("r") as f:
+                function_definition: FunctionDefinition = json.load(f)
+        except FileNotFoundError as e:
+            raise HTTPException(500, f"Function definition file {filename} not found.") from e
+        except json.JSONDecodeError as e:
+            raise HTTPException(500, f"Error parsing function definition file {filename}: {e}") from e
+
         function_definitions.append(function_definition)
 
     assistant.update_assistant(instructions, assistant_name, business.assistant.model, function_definitions)
