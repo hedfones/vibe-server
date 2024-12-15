@@ -23,7 +23,7 @@ from source import (
     logger,
 )
 from source.model import SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
-from source.notion import NotionService
+from source.notion import NotionPage, NotionService
 
 app = FastAPI()
 # Add CORSMiddleware to allow requests from the client
@@ -159,12 +159,19 @@ def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
 
     try:
         # Get the content from Notion
-        markdown_content = notion_service.get_page_content(business.notion_page_id)
+        notion_page = notion_service.get_page_content(business.notion_page_id)
+
+        def get_page_markdown(page: NotionPage) -> str:
+            child_markdown = "\n---\n".join(get_page_markdown(child) for child in page.children)
+            markdown = f"{page.markdown}\n---\n*Child Pages*:\n---\n{child_markdown}\n"
+            return markdown
+
+        pages: str = get_page_markdown(notion_page)
 
         # Update the business context with the markdown content
-        db.update_assistant_context(payload.business_id, markdown_content)
+        db.update_assistant_context(payload.business_id, pages)
 
-        return SyncNotionResponse(markdown_content=markdown_content)
+        return SyncNotionResponse(markdown_content=notion_page)
     except Exception as e:
         logger.error(f"Error syncing Notion content for business {payload.business_id}: {str(e)}")
         raise HTTPException(500, f"Error syncing Notion content: {str(e)}") from e
@@ -182,8 +189,13 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
     assistant_fields: dict[str, bool | str | int] = business.assistant.model_dump()
 
     function_dir = Path("resources/functions")
-    with open(function_dir / "function_mapping.yaml", "r") as f:
-        function_fields: dict[str, str] = yaml.safe_load(f)
+    try:
+        with open(function_dir / "function_mapping.yaml", "r") as f:
+            function_fields: dict[str, str] = yaml.safe_load(f)
+    except FileNotFoundError as e:
+        raise HTTPException(500, "Function mapping file not found.") from e
+    except yaml.YAMLError as e:
+        raise HTTPException(500, f"Error parsing function mapping file: {e}") from e
 
     function_definitions: list[FunctionDefinition] = []
     for key, filename in function_fields.items():
@@ -191,8 +203,14 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
         if not do_use_function:
             continue
         filepath = function_dir / filename
-        with filepath.open("r") as f:
-            function_definition: FunctionDefinition = json.load(f)
+        try:
+            with filepath.open("r") as f:
+                function_definition: FunctionDefinition = json.load(f)
+        except FileNotFoundError as e:
+            raise HTTPException(500, f"Function definition file {filename} not found.") from e
+        except json.JSONDecodeError as e:
+            raise HTTPException(500, f"Error parsing function definition file {filename}: {e}") from e
+
         function_definitions.append(function_definition)
 
     assistant.update_assistant(instructions, assistant_name, business.assistant.model, function_definitions)
