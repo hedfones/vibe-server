@@ -4,9 +4,7 @@ from notion_client import Client
 
 from .model import Block, NotionPage, Page, TextSegment
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("server")
 
 
 class NotionService:

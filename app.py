@@ -23,7 +23,7 @@ from source import (
     logger,
 )
 from source.model import SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
-from source.notion import NotionService
+from source.notion import NotionPage, NotionService
 
 app = FastAPI()
 # Add CORSMiddleware to allow requests from the client
@@ -159,12 +159,19 @@ def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
 
     try:
         # Get the content from Notion
-        markdown_content = notion_service.get_page_content(business.notion_page_id)
+        notion_page = notion_service.get_page_content(business.notion_page_id)
+
+        def get_page_markdown(page: NotionPage) -> str:
+            child_markdown = "\n---\n".join(get_page_markdown(child) for child in page.children)
+            markdown = f"{page.markdown}\n---\n*Child Pages*:\n---\n{child_markdown}\n"
+            return markdown
+
+        pages: str = get_page_markdown(notion_page)
 
         # Update the business context with the markdown content
-        db.update_assistant_context(payload.business_id, markdown_content)
+        db.update_assistant_context(payload.business_id, pages)
 
-        return SyncNotionResponse(markdown_content=markdown_content)
+        return SyncNotionResponse(markdown_content=notion_page)
     except Exception as e:
         logger.error(f"Error syncing Notion content for business {payload.business_id}: {str(e)}")
         raise HTTPException(500, f"Error syncing Notion content: {str(e)}") from e
