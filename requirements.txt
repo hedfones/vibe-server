@@ -8,16 +8,28 @@ anyio==4.7.0
     #   openai
     #   starlette
     #   watchfiles
+boto3==1.35.86
+    # via -r requirements.in
+boto3-stubs==1.35.86
+    # via -r requirements.in
+botocore==1.35.86
+    # via
+    #   boto3
+    #   s3transfer
+botocore-stubs==1.35.86
+    # via
+    #   boto3-stubs
+    #   types-boto3
 cachetools==5.5.0
     # via google-auth
-certifi==2024.8.30
+certifi==2024.12.14
     # via
     #   httpcore
     #   httpx
     #   requests
 charset-normalizer==3.4.0
     # via requests
-click==8.1.7
+click==8.1.8
     # via
     #   rich-toolkit
     #   typer
@@ -30,11 +42,11 @@ email-validator==2.2.0
     # via fastapi
 fastapi==0.115.6
     # via -r requirements.in
-fastapi-cli==0.0.6
+fastapi-cli==0.0.7
     # via fastapi
 google-api-core==2.24.0
     # via google-api-python-client
-google-api-python-client==2.155.0
+google-api-python-client==2.156.0
     # via -r requirements.in
 google-auth==2.37.0
     # via
@@ -73,25 +85,29 @@ idna==3.10
     #   email-validator
     #   httpx
     #   requests
-jinja2==3.1.4
+jinja2==3.1.5
     # via fastapi
 jiter==0.8.2
     # via openai
+jmespath==1.0.1
+    # via
+    #   boto3
+    #   botocore
 markdown-it-py==3.0.0
     # via rich
 markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-notion-client==2.2.1
+notion-client==2.3.0
     # via -r requirements.in
 oauthlib==3.2.2
     # via requests-oauthlib
-openai==1.57.4
+openai==1.58.1
     # via -r requirements.in
 proto-plus==1.25.0
     # via google-api-core
-protobuf==5.29.1
+protobuf==5.29.2
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -104,23 +120,25 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.1
     # via google-auth
-pydantic==2.10.3
+pydantic==2.10.4
     # via
     #   -r requirements.in
     #   fastapi
     #   openai
     #   sqlmodel
-pydantic-core==2.27.1
+pydantic-core==2.27.2
     # via pydantic
 pygments==2.18.0
     # via rich
 pyparsing==3.2.0
     # via httplib2
 python-dateutil==2.9.0.post0
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   botocore
 python-dotenv==1.0.1
     # via uvicorn
-python-multipart==0.0.19
+python-multipart==0.0.20
     # via fastapi
 pytz==2024.2
     # via -r requirements.in
@@ -142,6 +160,8 @@ rich-toolkit==0.12.0
     # via fastapi-cli
 rsa==4.9
     # via google-auth
+s3transfer==0.10.4
+    # via boto3
 shellingham==1.5.4
     # via typer
 six==1.17.0
@@ -160,9 +180,32 @@ tqdm==4.67.1
     # via openai
 typer==0.15.1
     # via fastapi-cli
+types-awscrt==0.23.6
+    # via botocore-stubs
+types-boto3==1.35.86
+    # via -r requirements.in
+types-boto3-cloudformation==1.35.71
+    # via types-boto3
+types-boto3-dynamodb==1.35.74
+    # via types-boto3
+types-boto3-ec2==1.35.82
+    # via types-boto3
+types-boto3-lambda==1.35.71
+    # via types-boto3
+types-boto3-rds==1.35.82
+    # via types-boto3
+types-boto3-s3==1.35.81
+    # via types-boto3
+types-boto3-sqs==1.35.71
+    # via types-boto3
+types-s3transfer==0.10.4
+    # via
+    #   boto3-stubs
+    #   types-boto3
 typing-extensions==4.12.2
     # via
     #   anyio
+    #   boto3-stubs
     #   fastapi
     #   openai
     #   pydantic
@@ -170,11 +213,21 @@ typing-extensions==4.12.2
     #   rich-toolkit
     #   sqlalchemy
     #   typer
+    #   types-boto3
+    #   types-boto3-cloudformation
+    #   types-boto3-dynamodb
+    #   types-boto3-ec2
+    #   types-boto3-lambda
+    #   types-boto3-rds
+    #   types-boto3-s3
+    #   types-boto3-sqs
 uritemplate==4.1.1
     # via google-api-python-client
 urllib3==2.2.3
-    # via requests
-uvicorn==0.32.1
+    # via
+    #   botocore
+    #   requests
+uvicorn==0.34.0
     # via
     #   -r requirements.in
     #   fastapi
