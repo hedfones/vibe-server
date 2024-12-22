@@ -7,6 +7,7 @@ from typing_extensions import override
 
 from .calendar import Event
 from .database import Message
+from .notion import NotionPage
 
 
 class ConversationInitRequest(BaseModel):
@@ -141,7 +142,7 @@ class SyncNotionRequest(BaseModel):
 class SyncNotionResponse(BaseModel):
     """Response model for syncing Notion content."""
 
-    markdown_content: str
+    markdown_content: NotionPage
 
 
 class UpdateAssistantRequest(BaseModel):

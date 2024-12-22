@@ -153,122 +153,122 @@ insert into
     photo (file_uid, description, business_id)
 values
     (
-        'bbb16509-efd1-4bca-9e0a-b837dd385e51',
+        'bbb16509-efd1-4bca-9e0a-b837dd385e51.jpeg',
         'A young man is sitting casually on a stone bench outdoors, smiling, and wearing a varsity jacket with a modern building and greenery in the background.',
         1
     ),
     (
-        'a70ac155-93b0-457f-a3e2-0a32b2ac13d2',
+        'a70ac155-93b0-457f-a3e2-0a32b2ac13d2.jpeg',
         'A young man in a blazer leans casually against a column in an elegant stone courtyard with arched architecture and warm window lighting.',
         1
     ),
     (
-        '954a6947-2c50-42b2-98f5-fadfe94b26c2',
+        '954a6947-2c50-42b2-98f5-fadfe94b26c2.jpeg',
         'A woman in a white dress walks down a narrow grassy path in a lush, open field surrounded by trees under a cloudy sky.',
         1
     ),
     (
-        '359b0d21-9d9e-41c7-ac21-d12dcc907c2f',
+        '359b0d21-9d9e-41c7-ac21-d12dcc907c2f.jpeg',
         'A black-and-white portrait of a woman in a white dress, standing outdoors with a calm expression, gently touching her hair, and surrounded by a blurred natural background.',
         1
     ),
     (
-        '10f59c60-6f53-4962-815c-763508420d03',
+        '10f59c60-6f53-4962-815c-763508420d03.jpeg',
         'A young man in a suit stands confidently on a garden pathway, framed by lush greenery and a large stone building in the background.',
         1
     ),
     (
-        '69ba0d29-a9cc-439b-ae41-9fc81383eda9',
+        '69ba0d29-a9cc-439b-ae41-9fc81383eda9.jpeg',
         'A young woman in a floral dress and white sneakers sits casually by a wooden post in a shaded outdoor area, surrounded by greenery and soft sunlight.',
         1
     ),
     (
-        '00be84f5-9d64-4b1e-a5c9-2ec27b5fd681',
+        '00be84f5-9d64-4b1e-a5c9-2ec27b5fd681.jpeg',
         'A young woman stands on a wooden walkway flanked by tall wooden beams and large windows, with a serene outdoor setting in the background.',
         1
     ),
     (
-        'f0324417-5e8e-4a91-b65b-6b701b547122',
+        'f0324417-5e8e-4a91-b65b-6b701b547122.jpeg',
         'A man leans casually on a wooden railing under a covered walkway, surrounded by autumn foliage in a peaceful outdoor setting.',
         1
     ),
     (
-        'b0b07423-d847-452d-977a-fcda765aa032',
+        'b0b07423-d847-452d-977a-fcda765aa032.jpeg',
         'Two friends stand back-to-back, smiling brightly by a lakeside railing, with vibrant autumn foliage reflecting in the water behind them.',
         1
     ),
     (
-        'e194a80b-ce49-43cf-bbe7-6e3e1c04e14e',
+        'e194a80b-ce49-43cf-bbe7-6e3e1c04e14e.jpeg',
         'A woman stands confidently in a black dress and white sneakers amidst tall, golden grass, with an autumnal forest fading into a soft mist in the background.',
         1
     ),
     (
-        '6205f410-c603-4351-b3ee-74e7212fa209',
+        '6205f410-c603-4351-b3ee-74e7212fa209.jpeg',
         'A young man in a light blue shirt poses confidently, crouched in an outdoor setting with soft lighting and architectural details in the background.',
         1
     ),
     (
-        '7b60ed40-edc7-46a0-97ad-cb8d479c9e32',
+        '7b60ed40-edc7-46a0-97ad-cb8d479c9e32.jpeg',
         'A young man leans casually against a pillar in a stylish urban setting, dressed in a sweatshirt and sneakers, with a confident yet relaxed demeanor captured in black and white.',
         1
     ),
     (
-        '84b6cf32-6904-4d80-9021-9d57cc75d313',
+        '84b6cf32-6904-4d80-9021-9d57cc75d313.jpeg',
         'A tender black-and-white image of an adult gently cradling a newborns head in their hands, capturing a moment of love and protection.',
         1
     ),
     (
-        '3b4a6d91-9a99-4fbc-b590-3753ca098847',
+        '3b4a6d91-9a99-4fbc-b590-3753ca098847.jpeg',
         'A close-up of gentle hands cradling tiny baby feet, capturing a moment of warmth and tenderness in soft natural light.',
         1
     ),
     (
-        '80bf3819-f5be-4dbc-80d3-6b2d62c29abd',
+        '80bf3819-f5be-4dbc-80d3-6b2d62c29abd.jpeg',
         'A heartwarming black-and-white image of a family lying closely together, with a peaceful newborn cradled between the parents, radiating love and connection.',
         1
     ),
     (
-        'c6de9dd6-65fb-4142-8999-3bb98ba5d09c',
+        'c6de9dd6-65fb-4142-8999-3bb98ba5d09c.jpeg',
         'A serene moment in a bright, modern living room as a couple lovingly holds their newborn, framed by an arched doorway and soft natural light.',
         1
     ),
     (
-        '08a9e463-c253-4ec3-968a-f7e2849622c3',
+        '08a9e463-c253-4ec3-968a-f7e2849622c3.jpeg',
         'A heartwarming black-and-white portrait of a family on a bed, with a father cradling a newborn and a mother sharing a kiss and a story with their toddler, showcasing a moment of love and togetherness.',
         1
     ),
     (
-        '286c7ac7-545a-428c-b2fa-a9467184172f',
+        '286c7ac7-545a-428c-b2fa-a9467184172f.jpeg',
         'A black-and-white portrait of a father gazing lovingly at his newborn daughter, who is swaddled and adorned with a large bow, capturing a tender and intimate moment.',
         1
     ),
     (
-        '8a9bccfb-cb5d-4c7c-b0fb-fd4511eb4969',
+        '8a9bccfb-cb5d-4c7c-b0fb-fd4511eb4969.jpeg',
         'A joyful family strolls through a lush green park, with the parents swinging their laughing toddler between them as her older sibling walks hand-in-hand nearby.',
         1
     ),
     (
-        'db0d6f30-072b-4603-81c8-2387443b59ef',
+        'db0d6f30-072b-4603-81c8-2387443b59ef.jpeg',
         'A playful moment as a smiling mother holds her laughing child upside-down in a lush green outdoor setting, radiating joy and connection.',
         1
     ),
     (
-        '243ac5d7-bd4e-4774-aae5-169307c11b8f',
+        '243ac5d7-bd4e-4774-aae5-169307c11b8f.jpeg',
         'A black-and-white photograph of a family walking hand-in-hand across a spacious grassy field, surrounded by tall trees and a serene countryside atmosphere.',
         1
     ),
     (
-        'b60d8921-32b9-4d4b-ad07-e39e50e959da',
+        'b60d8921-32b9-4d4b-ad07-e39e50e959da.jpeg',
         'A candid moment of laughter as a mother and father play with their young child on a cozy couch in a warm and inviting living room.',
         1
     ),
     (
-        'd7a22539-a4fd-494a-8ea3-475b517591b4',
+        'd7a22539-a4fd-494a-8ea3-475b517591b4.jpeg',
         'A beautifully dressed family sits together on marble steps in front of a grand fountain, radiating warmth and elegance on a cloudy day.',
         1
     ),
     (
-        '98faa421-d9c7-4c0d-a562-fede11403ea7',
+        '98faa421-d9c7-4c0d-a562-fede11403ea7.jpeg',
         'A cheerful family gathers closely around two smiling children seated on a vintage chair, capturing a moment of love and happiness in a bright, elegant setting.',
         1
     );
