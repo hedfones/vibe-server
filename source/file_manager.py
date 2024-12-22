@@ -1,16 +1,19 @@
 import logging
 from typing import TypedDict
+
 import boto3
-from types_boto3_s3 import S3Client
 from botocore.exceptions import ClientError
+from types_boto3_s3 import S3Client
+
 
 class File(TypedDict):
     uid: str
     filename: str
 
+
 class FileManager:
     def __init__(self, bucket_name: str) -> None:
-        self.s3_client: S3Client = boto3.client('s3')
+        self.s3_client: S3Client = boto3.client("s3")
         self.bucket_name: str = bucket_name
 
         # Check if the bucket exists
@@ -29,7 +32,7 @@ class FileManager:
     def get_file(self, file_uid: str) -> bytes | None:
         try:
             response = self.s3_client.get_object(Bucket=self.bucket_name, Key=file_uid)
-            return response['Body'].read()
+            return response["Body"].read()
         except ClientError as e:
             logging.error(f"Error fetching file {file_uid} from bucket {self.bucket_name}: {e}")
             return None

@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import yaml
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from openai.types.shared_params.function_definition import FunctionDefinition
@@ -40,7 +40,7 @@ app.add_middleware(
 )
 
 secrets = SecretsManager()
-file_manager = FileManager("./temp")
+file_manager = FileManager("booking-agent-dev")
 notion_service = NotionService(secrets.get("NOTION_AUTH_TOKEN"))
 
 openai_creds = OpenAICredentials(
@@ -214,3 +214,41 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
         function_definitions.append(function_definition)
 
     assistant.update_assistant(instructions, assistant_name, business.assistant.model, function_definitions)
+
+
+@app.post("/upload-file/")
+async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
+    """
+    Upload a file to the server to be stored in the S3 bucket.
+
+    - **file**: The file to upload.
+
+    Returns a response with the file UID if successful.
+    """
+    file_contents = await file.read()
+    file_uid = file.filename  # or any unique identifier scheme
+    upload_success = file_manager.upload_file(file_uid, file_contents)
+
+    if not upload_success:
+        raise HTTPException(500, "Failed to upload file.")
+
+    return JSONResponse(content={"file_uid": file_uid, "message": "File uploaded successfully."})
+
+
+@app.get("/read-file/{file_uid}", response_class=FileResponse)
+def read_file(file_uid: str) -> FileResponse:
+    """
+    Retrieve a file from the server/S3 bucket.
+
+    - **file_uid**: The unique identifier of the file to retrieve.
+
+    Returns the file as a response.
+    """
+    file_bytes = file_manager.get_file(file_uid)
+    if file_bytes is None:
+        raise HTTPException(404, f"File with UID {file_uid} not found.")
+
+    # Save the file_bytes temporarily to return as FileResponse
+    tmp_file_path = Path("/tmp") / file_uid
+    _ = tmp_file_path.write_bytes(file_bytes)
+    return FileResponse(tmp_file_path, filename=file_uid)

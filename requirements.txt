@@ -204,8 +204,6 @@ types-s3transfer==0.10.4
     #   types-boto3
 typing-extensions==4.12.2
     # via
-    #   anyio
-    #   boto3-stubs
     #   fastapi
     #   openai
     #   pydantic
@@ -213,17 +211,9 @@ typing-extensions==4.12.2
     #   rich-toolkit
     #   sqlalchemy
     #   typer
-    #   types-boto3
-    #   types-boto3-cloudformation
-    #   types-boto3-dynamodb
-    #   types-boto3-ec2
-    #   types-boto3-lambda
-    #   types-boto3-rds
-    #   types-boto3-s3
-    #   types-boto3-sqs
 uritemplate==4.1.1
     # via google-api-python-client
-urllib3==2.2.3
+urllib3==2.3.0
     # via
     #   botocore
     #   requests
