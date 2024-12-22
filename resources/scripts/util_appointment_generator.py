@@ -10,7 +10,7 @@ from source import db, get_calendar_by_business_id
 # Assuming you've imported or defined:
 # DatabaseService, PostgresCredentials, Business, Associate, Schedule, Product
 # GoogleCalendar, and using the Event definition you provided
-from source.calendar import Event  # Using the provided Event TypedDict
+from source.calendar_service import Event  # Using the provided Event TypedDict
 from source.database import Schedule
 
 _ = load_dotenv(override=True)

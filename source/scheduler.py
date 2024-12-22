@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytz
 
-from .calendar import GoogleCalendar
+from .calendar_service import GoogleCalendar
 from .database import DatabaseService
 from .model import Appointment, AvailabilityWindow
 

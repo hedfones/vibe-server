@@ -196,6 +196,8 @@ types-boto3-rds==1.35.82
     # via types-boto3
 types-boto3-s3==1.35.81
     # via types-boto3
+types-boto3-secretsmanager==1.35.71
+    # via types-boto3
 types-boto3-sqs==1.35.71
     # via types-boto3
 types-s3transfer==0.10.4

@@ -1,7 +1,7 @@
 import pytz
 from fastapi import HTTPException
 
-from .calendar import Event, GoogleCalendar
+from .calendar_service import Event, GoogleCalendar
 from .database import DatabaseService, PostgresCredentials, Product
 from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler

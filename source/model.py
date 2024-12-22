@@ -5,7 +5,7 @@ import pytz
 from pydantic import BaseModel
 from typing_extensions import override
 
-from .calendar import Event
+from .calendar_service import Event
 from .database import Message
 from .notion import NotionPage
 
