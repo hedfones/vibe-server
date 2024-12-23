@@ -137,7 +137,7 @@ class Assistant:
         Returns:
             A list of ToolOutput instances containing outputs from tools.
         """
-        log.debug("Getting tool outputs for run: %s", run)
+        log.debug("Getting tool outputs", run=run)
         tool_outputs: list[ToolOutput] = []
 
         if run.required_action is None:
@@ -154,27 +154,27 @@ class Assistant:
             tool_log = log.bind(function_name=function_name, arguments=arguments)
 
             if tool.function.name == "check_availability":
-                tool_log.debug("Processing check_availability with arguments: %s", arguments)
+                tool_log.debug("Processing check_availability")
                 request = CheckAvailabilityRequest.model_validate(arguments)
                 availability = get_availability(request.product_id, request.location_id, self.client_timezone)
                 body = "\n".join(map(str, availability))
             elif tool.function.name == "get_product_locations":
-                tool_log.debug("Processing get_product_locations with arguments: %s", arguments)
+                tool_log.debug("Processing get_product_locations")
                 request = GetProductLocationsRequest.model_validate(arguments)
                 body = get_product_locations(request.product_id)
             elif tool.function.name == "get_product_list":
                 tool_log.debug("Processing get_product_list")
                 body = get_product_list(self.assistant_id)
             elif tool.function.name == "set_appointment":
-                tool_log.debug("Processing set_appointment with arguments: %s", argument_string)
+                tool_log.debug("Processing set_appointment")
                 request = SetAppointmentsRequest.parse_json_to_request(argument_string)
                 body = set_appointment(request)
             elif tool.function.name == "get_product_photos":
-                tool_log.debug("Processing get_product_photos with arguments: %s", arguments)
+                tool_log.debug("Processing get_product_photos")
                 request = GetProductPhotosRequest.model_validate(arguments)
                 body = get_product_photos(request.product_id)
             else:
-                tool_log.error("Unexpected tool function called: %s", tool.function.name)
+                tool_log.error("Unexpected tool function called")
                 raise Exception("Unexpected tool function called: {}".format(tool.function.name))
 
             tool_outputs.append({"tool_call_id": tool.id, "output": body})
