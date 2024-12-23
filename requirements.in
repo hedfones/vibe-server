@@ -1,12 +1,17 @@
 pydantic
-pytz
 fastapi[standard]
-pyyaml
-openai
-sqlmodel
 uvicorn
+
+
+openai
+
+pytz
+sqlmodel
 psycopg2-binary
+pyyaml
+
 python-dateutil
+structlog
 
 google-api-python-client
 google-auth-httplib2

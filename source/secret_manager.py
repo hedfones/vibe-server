@@ -44,7 +44,7 @@ class SecretsManager:
             logging.error(f"Failed to retrieve secret {secret_name}: {e}")
             raise RuntimeError(f"Failed to retrieve secret {secret_name}") from e
 
-    def get(self, secret_name: str, key: str | None = None) -> str | None:
+    def get(self, secret_name: str, key: str | None = None) -> str:
         """
         Retrieves the value of a specific key from a secret.
 
@@ -54,15 +54,15 @@ class SecretsManager:
             name as the key.
 
         Returns:
-            str: The value of the secret key, or None if not found.
+            str: The value of the secret key
         """
         if not key:
             key = secret_name
         try:
             secret_body = self.get_secret(secret_name)
             return secret_body.get(key)
-        except RuntimeError:
-            return None
+        except RuntimeError as e:
+            raise ValueError from e
 
 
 if __name__ == "__main__":

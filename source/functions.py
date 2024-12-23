@@ -1,12 +1,14 @@
 import pytz
+import structlog
 from fastapi import HTTPException
 
 from .calendar_service import Event, GoogleCalendar
 from .database import DatabaseService, PostgresCredentials, Product
-from .logger import logger
 from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
 from .secret_manager import SecretsManager
+
+log = structlog.stdlib.get_logger()
 
 # Initialize SecretsManager to manage access to sensitive credentials
 secrets = SecretsManager()
@@ -34,7 +36,8 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
     Raises:
         HTTPException: If the business or Google Calendar credentials are not found.
     """
-    logger.debug(f"Fetching calendar for business ID {business_id}.")
+    logger = log.bind(business_id=business_id)
+    logger.debug("Fetching calendar by business ID.")
     business = db.get_business_by_id(business_id)
     assert business is not None, f"Business not found for ID `{business_id}`."
 
@@ -51,7 +54,7 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
             )
         return GoogleCalendar(service_account_base64=service_account)
     else:
-        logger.error("Unrecognized calendar service.")
+        logger.error("Unrecognized calendar service.", service=business.calendar_service)
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
 
 
@@ -69,9 +72,8 @@ def get_availability(product_id: int, location_id: int, timezone: str) -> list[A
     Raises:
         HTTPException: If no product or availabilities are found.
     """
-    logger.debug(
-        f"Fetching availability for product ID {product_id} at location ID {location_id} in timezone {timezone}."
-    )
+    logger = log.bind(product_id=product_id, location_id=location_id, timezone=timezone)
+    logger.debug("Fetching availability for product ID at location ID in timezone.")
     products: list[Product] = db.select_by_id(Product, product_id)
     if not products:
         logger.error("Product not found.")
@@ -84,7 +86,7 @@ def get_availability(product_id: int, location_id: int, timezone: str) -> list[A
     # Get availability windows using the scheduler
     availabilities = scheduler.get_availabilities(product.id, product.duration_minutes, location_id)
     if not availabilities:
-        logger.error("No availabilities found.")
+        logger.error("No availabilities found.", duration_minutes=product.duration_minutes, location_id=location_id)
         raise HTTPException(
             404,
             detail="Unable to find availabilities associated with location "
@@ -111,7 +113,8 @@ def get_product_locations(product_id: int) -> str:
     Raises:
         HTTPException: If no locations are found for the product.
     """
-    logger.debug(f"Fetching locations for product ID {product_id}.")
+    logger = log.bind(product_id=product_id)
+    logger.debug("Fetching locations by product ID.")
     locations = db.get_locations_by_product_id(product_id)
     if not locations:
         logger.error("Locations not found.")
@@ -132,11 +135,11 @@ def get_product_list(assistant_id: str) -> str:
     Returns:
         str: A string representation of the product list.
     """
-    logger.debug(f"Fetching product list for assistant ID {assistant_id}.")
+    log.debug("Fetching product list for assistant ID.", assistant_id=assistant_id)
     products = db.get_products_by_assistant_id(assistant_id)
     product_string = "\n".join(map(str, products))
 
-    logger.debug("Product list fetched successfully.")
+    log.debug("Product list fetched successfully.")
     return product_string
 
 
@@ -152,7 +155,8 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     Raises:
         HTTPException: If resources like associate, business, or location are not found.
     """
-    logger.debug(f"Setting appointment with request: {request}.")
+    logger = log.bind(request=request)
+    logger.debug("Setting appointment with request.")
     associate, business = db.get_associate_and_business_by_associate_id(request.associate_id)
     assert associate is not None, f"Associate not found for ID `{request.associate_id}`."
     assert business is not None, f"Business not found for associate ID `{request.associate_id}`."
@@ -164,6 +168,7 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     start_datetime = request.start_datetime.astimezone(pytz.utc)
     end_datetime = request.end_datetime.astimezone(pytz.utc)
 
+    logger = logger.bind(calendar_service=business.calendar_service)
     if business.calendar_service == "google":
         logger.debug("Using Google Calendar service for appointment.")
         calendar_id = business.calendar_service_id
@@ -217,13 +222,13 @@ def get_product_photos(product_id: int) -> str:
     Returns:
         str: A string representation of the photos or a message if none are available.
     """
-    logger.debug(f"Fetching photos for product ID {product_id}.")
+    log.debug("Fetching photos for product ID.", product_id=product_id)
     photos = db.get_photos_by_product_id(product_id)
     if not photos:
-        logger.warning("No photos available.")
+        log.warning("No photos available.")
         return "No photos available for this product."
 
     photo_string = "\n".join(map(str, photos))
 
-    logger.debug("Photos fetched successfully.")
+    log.debug("Photos fetched successfully.")
     return photo_string

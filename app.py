@@ -1,6 +1,8 @@
 import json
+import logging
 from pathlib import Path
 
+import structlog
 import yaml
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +22,6 @@ from source import (
     UserMessageRequest,
     UserMessageResponse,
     db,
-    logger,
 )
 from source.model import SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
 from source.notion import NotionPage, NotionService
@@ -39,6 +40,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+logging.basicConfig(level=logging.DEBUG)
+log = structlog.stdlib.get_logger()
+
 secrets = SecretsManager()
 file_manager = FileManager("booking-agent-dev")
 notion_service = NotionService(secrets.get("NOTION_AUTH_TOKEN"))
@@ -53,7 +57,7 @@ openai_creds = OpenAICredentials(
 @app.exception_handler(HTTPException)
 def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     # Log the detailed error message
-    logger.error(f"HTTP Exception: {exc.detail} (status code: {exc.status_code})")
+    log.error(f"HTTP Exception (status code: {exc.status_code})", status_code=exc.status_code, description=exc.detail)
 
     # Return the original error response
     return JSONResponse(
@@ -173,7 +177,7 @@ def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
 
         return SyncNotionResponse(markdown_content=notion_page)
     except Exception as e:
-        logger.error(f"Error syncing Notion content for business {payload.business_id}: {str(e)}")
+        log.error("Error syncing Notion content", business_id=payload.business_id, exception=str(e))
         raise HTTPException(500, f"Error syncing Notion content: {str(e)}") from e
 
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal, TypedDict
 
+import structlog
 from openai import OpenAI
 from openai.types.beta import threads
 from openai.types.beta.function_tool_param import FunctionToolParam
@@ -18,13 +19,14 @@ from .functions import (
     get_product_photos,
     set_appointment,
 )
-from .logger import logger
 from .model import (
     CheckAvailabilityRequest,
     GetProductLocationsRequest,
     GetProductPhotosRequest,
     SetAppointmentsRequest,
 )
+
+log = structlog.stdlib.get_logger()
 
 
 @dataclass
@@ -54,7 +56,7 @@ class Thread:
             client: An instance of OpenAI client.
             thread_id: Optional thread identifier.
         """
-        logger.debug("Initializing Thread with thread_id: %s", thread_id)
+        log.debug("Initializing Thread", thread_id=thread_id)
         self._thread_id: str | None = thread_id
         self.client: OpenAI = client
 
@@ -66,9 +68,9 @@ class Thread:
         Returns:
             A string representing the thread ID.
         """
-        logger.debug("Getting thread_id")
+        log.debug("Getting thread_id")
         if not self._thread_id:
-            logger.info("Creating new thread as thread_id is None")
+            log.info("Creating new thread as thread_id is None")
             self._thread_id = self.client.beta.threads.create().id
         return self._thread_id
 
@@ -79,7 +81,7 @@ class Thread:
         Args:
             message: A dictionary containing role and content of the message.
         """
-        logger.info("Adding message: %s to thread_id: %s", message, self.thread_id)
+        log.info("Adding message", message=message, thread_id=self.thread_id)
         _ = self.client.beta.threads.messages.create(thread_id=self.thread_id, **message)
 
 
@@ -102,7 +104,7 @@ class Assistant:
             client_timezone: Timezone of the client using this Assistant.
             thread_id: Optional thread identifier to be used by the Assistant.
         """
-        logger.debug("Initializing Assistant with assistant_id: %s", assistant_id)
+        log.debug("Initializing Assistant", assistant_id=assistant_id, client_timezone=client_timezone)
         self.assistant_id: str = assistant_id
         self.client_timezone: str = client_timezone
 
@@ -121,7 +123,7 @@ class Assistant:
         Args:
             message: A dictionary containing role and content of the message.
         """
-        logger.info("Adding message to Assistant: %s", message)
+        log.info("Adding message to Assistants", message=message)
         self.thread.add_message(message)
         return
 
@@ -135,46 +137,49 @@ class Assistant:
         Returns:
             A list of ToolOutput instances containing outputs from tools.
         """
-        logger.debug("Getting tool outputs for run: %s", run)
+        log.debug("Getting tool outputs for run: %s", run)
         tool_outputs: list[ToolOutput] = []
 
         if run.required_action is None:
-            logger.warning("No required action detected for run.")
+            log.warning("No required action detected for run.")
             return tool_outputs
 
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            logger.info(f"Running tool {tool.function.name} with arguments {tool.function.arguments}")
+            log.info(f"Running tool {tool.function.name} with arguments {tool.function.arguments}")
+            function_name = tool.function.name
             arguments: dict[str, int | str | list[str]] = {}
             if argument_string := tool.function.arguments:
                 arguments = json.loads(argument_string)
 
+            tool_log = log.bind(function_name=function_name, arguments=arguments)
+
             if tool.function.name == "check_availability":
-                logger.debug("Processing check_availability with arguments: %s", arguments)
+                tool_log.debug("Processing check_availability with arguments: %s", arguments)
                 request = CheckAvailabilityRequest.model_validate(arguments)
                 availability = get_availability(request.product_id, request.location_id, self.client_timezone)
                 body = "\n".join(map(str, availability))
             elif tool.function.name == "get_product_locations":
-                logger.debug("Processing get_product_locations with arguments: %s", arguments)
+                tool_log.debug("Processing get_product_locations with arguments: %s", arguments)
                 request = GetProductLocationsRequest.model_validate(arguments)
                 body = get_product_locations(request.product_id)
             elif tool.function.name == "get_product_list":
-                logger.debug("Processing get_product_list")
+                tool_log.debug("Processing get_product_list")
                 body = get_product_list(self.assistant_id)
             elif tool.function.name == "set_appointment":
-                logger.debug("Processing set_appointment with arguments: %s", argument_string)
+                tool_log.debug("Processing set_appointment with arguments: %s", argument_string)
                 request = SetAppointmentsRequest.parse_json_to_request(argument_string)
                 body = set_appointment(request)
             elif tool.function.name == "get_product_photos":
-                logger.debug("Processing get_product_photos with arguments: %s", arguments)
+                tool_log.debug("Processing get_product_photos with arguments: %s", arguments)
                 request = GetProductPhotosRequest.model_validate(arguments)
                 body = get_product_photos(request.product_id)
             else:
-                logger.error("Unexpected tool function called: %s", tool.function.name)
+                tool_log.error("Unexpected tool function called: %s", tool.function.name)
                 raise Exception("Unexpected tool function called: {}".format(tool.function.name))
 
             tool_outputs.append({"tool_call_id": tool.id, "output": body})
 
-        logger.debug(f"Tool outputs: `{tool_outputs}`")
+        log.debug("Completed tool calls", tool_outputs=tool_outputs)
         return tool_outputs
 
     def retrieve_response(self, run: Run | None = None) -> str:
@@ -190,9 +195,9 @@ class Assistant:
         Raises:
             TimeoutError: If the assistant takes too long to respond.
         """
-        logger.debug("Retrieving response for run: %s", run)
+        log.debug("Retrieving response for run", run=run)
         if not run:
-            logger.info("Creating and polling new run as no run is provided")
+            log.info("Creating and polling new run as no run is provided")
             run = self.client.beta.threads.runs.create_and_poll(
                 thread_id=self.thread.thread_id,
                 assistant_id=self.assistant_id,
@@ -202,7 +207,7 @@ class Assistant:
         timeout_timestamp = datetime.now() + timedelta(seconds=30)
         while datetime.now() < timeout_timestamp:
             if run.status == "completed":
-                logger.info("Run completed, retrieving messages")
+                log.info("Run completed, retrieving messages")
                 messages = self.client.beta.threads.messages.list(thread_id=self.thread.thread_id)
 
                 message = messages.data[0]
@@ -214,16 +219,16 @@ class Assistant:
                 message_text = message_content.text.value
                 return message_text
             elif run.status == "requires_action":
-                logger.info("Run requires action, getting tool outputs")
+                log.info("Run requires action, getting tool outputs")
                 tool_outputs = self.get_tool_outputs(run)
                 run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(
                     thread_id=self.thread.thread_id, run_id=run.id, tool_outputs=tool_outputs
                 )
             elif run.status == "failed":
-                logger.error("Run failed with status: %s", run.status)
+                log.error("Assistant run failed", status=run.status)
                 raise Exception(f"Assistant run failed with status: {run.status}")
             else:
-                logger.warning(f"{run.status=}")
+                log.warning(f"{run.status=}")
             time.sleep(0.25)
         raise TimeoutError("Assistant took too long to respond.")
 
@@ -237,9 +242,7 @@ class Assistant:
             model: The model to be used by the assistant.
             tools: A list of FunctionDefinition instances defining available tools.
         """
-        logger.debug(
-            "Updating assistant with instructions: %s, name: %s, model: %s, tools: %s", instructions, name, model, tools
-        )
+        log.debug("Updating assistant instructions", instructions=instructions, name=name, model=model, tools=tools)
         tool_params: list[FunctionToolParam] = []
         for definition in tools:
             tool_param: FunctionToolParam = {"type": "function", "function": definition}

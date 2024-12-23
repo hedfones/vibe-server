@@ -7,7 +7,6 @@ from .database import (
 )
 from .file_manager import FileManager
 from .functions import db, get_calendar_by_business_id
-from .logger import logger
 from .model import (
     AvailabilityWindow,
     ConversationInitRequest,
@@ -37,6 +36,5 @@ __all__ = [
     "FileManager",
     "GetPhotoRequest",
     "get_calendar_by_business_id",
-    "logger",
     "UpdateAssistantRequest",
 ]
