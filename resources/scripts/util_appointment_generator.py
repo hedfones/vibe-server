@@ -1,3 +1,11 @@
+import os
+import sys
+
+# Calculate the absolute path
+source_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../."))
+print(source_path)
+sys.path.insert(0, source_path)
+
 import random
 from datetime import datetime, timedelta
 
@@ -76,8 +84,8 @@ def create_schedules_and_appointments():
 
             # Create random appointments within this schedule
             for hour_offset in range(schedule_duration_hours):
-                # 50% chance to create an appointment
-                if random.random() < 0.15:
+                # 5% chance to create an appointment
+                if random.random() < 0.05:
                     appt_start = start_dt + timedelta(hours=hour_offset)
                     # Length 1 to 3 hours
                     duration = random.randint(1, 3)
