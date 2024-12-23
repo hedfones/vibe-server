@@ -29,24 +29,43 @@ from .model import (
 
 @dataclass
 class OpenAICredentials:
+    """Data class for storing OpenAI credentials."""
+
     api_key: str
     organization: str
     project: str
 
 
 class AssistantMessage(TypedDict):
+    """TypedDict for Assistant messages indicating role and content."""
+
     role: Literal["assistant", "user"]
     content: str
 
 
 class Thread:
+    """Class representing a messaging thread with OpenAI API."""
+
     def __init__(self, client: OpenAI, thread_id: str | None = None) -> None:
+        """
+        Initializes a Thread instance.
+
+        Args:
+            client: An instance of OpenAI client.
+            thread_id: Optional thread identifier.
+        """
         logger.debug("Initializing Thread with thread_id: %s", thread_id)
         self._thread_id: str | None = thread_id
         self.client: OpenAI = client
 
     @property
     def thread_id(self) -> str:
+        """
+        Retrieves the current thread ID. If no thread ID exists, a new thread is created.
+
+        Returns:
+            A string representing the thread ID.
+        """
         logger.debug("Getting thread_id")
         if not self._thread_id:
             logger.info("Creating new thread as thread_id is None")
@@ -54,11 +73,19 @@ class Thread:
         return self._thread_id
 
     def add_message(self, message: AssistantMessage) -> None:
+        """
+        Adds a message to the current thread.
+
+        Args:
+            message: A dictionary containing role and content of the message.
+        """
         logger.info("Adding message: %s to thread_id: %s", message, self.thread_id)
         _ = self.client.beta.threads.messages.create(thread_id=self.thread_id, **message)
 
 
 class Assistant:
+    """Class representing an Assistant that interacts with OpenAI API."""
+
     def __init__(
         self,
         credentials: OpenAICredentials,
@@ -66,6 +93,15 @@ class Assistant:
         client_timezone: str = "UTC",
         thread_id: str | None = None,
     ) -> None:
+        """
+        Initializes an Assistant instance.
+
+        Args:
+            credentials: OpenAICredentials instance containing API key and info.
+            assistant_id: An identifier for the assistant.
+            client_timezone: Timezone of the client using this Assistant.
+            thread_id: Optional thread identifier to be used by the Assistant.
+        """
         logger.debug("Initializing Assistant with assistant_id: %s", assistant_id)
         self.assistant_id: str = assistant_id
         self.client_timezone: str = client_timezone
@@ -79,11 +115,26 @@ class Assistant:
         self.thread: Thread = Thread(self.client, thread_id)
 
     def add_message(self, message: AssistantMessage) -> None:
+        """
+        Adds a message to the Assistant's thread.
+
+        Args:
+            message: A dictionary containing role and content of the message.
+        """
         logger.info("Adding message to Assistant: %s", message)
         self.thread.add_message(message)
         return
 
     def get_tool_outputs(self, run: Run) -> list[ToolOutput]:
+        """
+        Retrieves tool outputs required by a run.
+
+        Args:
+            run: A Run object representing a specific operation or session.
+
+        Returns:
+            A list of ToolOutput instances containing outputs from tools.
+        """
         logger.debug("Getting tool outputs for run: %s", run)
         tool_outputs: list[ToolOutput] = []
 
@@ -127,6 +178,18 @@ class Assistant:
         return tool_outputs
 
     def retrieve_response(self, run: Run | None = None) -> str:
+        """
+        Retrieves a response based on the current or specified run.
+
+        Args:
+            run: Optional Run object. If None, a new run is created and polled.
+
+        Returns:
+            A string containing the retrieved message text.
+
+        Raises:
+            TimeoutError: If the assistant takes too long to respond.
+        """
         logger.debug("Retrieving response for run: %s", run)
         if not run:
             logger.info("Creating and polling new run as no run is provided")
@@ -165,6 +228,15 @@ class Assistant:
         raise TimeoutError("Assistant took too long to respond.")
 
     def update_assistant(self, instructions: str, name: str, model: str, tools: list[FunctionDefinition]) -> None:
+        """
+        Updates the assistant with new instructions, name, model, and tools.
+
+        Args:
+            instructions: String containing instructions for the assistant.
+            name: Name of the assistant.
+            model: The model to be used by the assistant.
+            tools: A list of FunctionDefinition instances defining available tools.
+        """
         logger.debug(
             "Updating assistant with instructions: %s, name: %s, model: %s, tools: %s", instructions, name, model, tools
         )

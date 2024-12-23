@@ -14,7 +14,14 @@ class NotionService:
         logger.info("NotionService initialized with provided auth token.")
 
     def get_page_content(self, page_id: str) -> NotionPage:
-        """Get the content of a Notion page and its children, including databases, as NotionPage."""
+        """Get the content of a Notion page and its children, including databases, as NotionPage.
+
+        Args:
+            page_id (str): The ID of the Notion page to fetch the content for.
+
+        Returns:
+            NotionPage: An object containing the markdown content and children.
+        """
         logger.info(f"Fetching page content for ID: {page_id}")
         # Remove any dashes from the page ID if present
         page_id = page_id.replace("-", "")
@@ -26,7 +33,15 @@ class NotionService:
         return page  # Returning the NotionPage
 
     def get_all_blocks(self, block_id: str, processed: set[str] | None = None) -> list[Block]:
-        """Recursively get all blocks for a page, including nested blocks and databases."""
+        """Recursively get all blocks for a page, including nested blocks and databases.
+
+        Args:
+            block_id (str): The ID of the block to fetch all children for.
+            processed (set[str] | None): A set to keep track of processed block IDs to avoid duplication.
+
+        Returns:
+            list[Block]: A list of Block objects retrieved.
+        """
         if not processed:
             processed = set()
         logger.info(f"Fetching all blocks for block ID: {block_id}")
@@ -64,7 +79,14 @@ class NotionService:
         return blocks
 
     def get_database_pages(self, database_id: str) -> list[Page]:
-        """Retrieve all pages from a database."""
+        """Retrieve all pages from a database.
+
+        Args:
+            database_id (str): The ID of the database from which to fetch pages.
+
+        Returns:
+            list[Page]: A list of Page objects retrieved from the database.
+        """
         logger.info(f"Retrieving pages from database ID: {database_id}")
         pages: list[Page] = []
         response = self.client.databases.query(database_id)
@@ -82,7 +104,15 @@ class NotionService:
         return pages
 
     def _blocks_to_markdown(self, blocks: list[Block]) -> tuple[list[str], list[NotionPage]]:
-        """Convert Notion blocks and pages to NotionPage objects."""
+        """Convert Notion blocks and pages to NotionPage objects.
+
+        Args:
+            blocks (list[Block]): A list of Notion Block objects to convert.
+
+        Returns:
+            tuple[list[str], list[NotionPage]]: A tuple containing two lists:
+            one with markdown strings and other with NotionPage objects as children.
+        """
         markdown: list[str] = []
         children: list[NotionPage] = []
 
@@ -150,6 +180,14 @@ class NotionService:
         return markdown, children
 
     def _blocks_to_notion_page(self, blocks: list[Block]) -> NotionPage:
+        """Convert a list of Notion blocks to a NotionPage object.
+
+        Args:
+            blocks (list[Block]): A list of Notion Block objects.
+
+        Returns:
+            NotionPage: A NotionPage object containing the markdown and children.
+        """
         markdown, children = self._blocks_to_markdown(blocks)
         md_string = "\n\n".join(markdown)
         page = NotionPage(markdown=md_string, children=children)
@@ -157,7 +195,14 @@ class NotionService:
         return page
 
     def _get_rich_text(self, rich_text: list[TextSegment]) -> str:
-        """Extract text content from rich text objects."""
+        """Extract text content from rich text objects.
+
+        Args:
+            rich_text (list[TextSegment]): A list of rich text segment objects to extract from.
+
+        Returns:
+            str: The combined text extracted from the rich text segments.
+        """
         if not rich_text:
             logger.warning("Received empty rich text.")
             return ""

@@ -8,8 +8,10 @@ from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
 from .secret_manager import SecretsManager
 
+# Initialize SecretsManager to manage access to sensitive credentials
 secrets = SecretsManager()
 
+# Set up database credentials using secrets manager
 db_creds = PostgresCredentials(
     user=secrets.get("POSTGRES_USER") or "",
     password=secrets.get("POSTGRES_PASSWORD") or "",
@@ -21,6 +23,17 @@ db = DatabaseService(db_creds)
 
 
 def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
+    """Fetch Google Calendar for a given business ID.
+
+    Args:
+        business_id (int): The ID of the business.
+
+    Returns:
+        GoogleCalendar: An instance of GoogleCalendar configured with credentials.
+
+    Raises:
+        HTTPException: If the business or Google Calendar credentials are not found.
+    """
     logger.debug(f"Fetching calendar for business ID {business_id}.")
     business = db.get_business_by_id(business_id)
     assert business is not None, f"Business not found for ID `{business_id}`."
@@ -28,6 +41,8 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
     if business.calendar_service == "google":
         logger.debug("Business uses Google Calendar service.")
         calendar_id = business.calendar_service_id
+
+        # Fetch the Google service account credentials for the calendar
         service_account = secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}")
         if not service_account:
             logger.error("Google Calendar credentials not found.")
@@ -41,6 +56,19 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
 
 
 def get_availability(product_id: int, location_id: int, timezone: str) -> list[AvailabilityWindow]:
+    """Retrieve availability windows for a product at a specific location.
+
+    Args:
+        product_id (int): The ID of the product.
+        location_id (int): The ID of the location.
+        timezone (str): The timezone for localization.
+
+    Returns:
+        list[AvailabilityWindow]: A list of available time windows for the product.
+
+    Raises:
+        HTTPException: If no product or availabilities are found.
+    """
     logger.debug(
         f"Fetching availability for product ID {product_id} at location ID {location_id} in timezone {timezone}."
     )
@@ -53,6 +81,7 @@ def get_availability(product_id: int, location_id: int, timezone: str) -> list[A
     calendar = get_calendar_by_business_id(product.business_id)
     scheduler = Scheduler(db, calendar)
 
+    # Get availability windows using the scheduler
     availabilities = scheduler.get_availabilities(product.id, product.duration_minutes, location_id)
     if not availabilities:
         logger.error("No availabilities found.")
@@ -62,6 +91,7 @@ def get_availability(product_id: int, location_id: int, timezone: str) -> list[A
             + f"`{location_id}` and product `{product.id}`.",
         )
 
+    # Localize availability times to the specified timezone
     for availability in availabilities:
         availability.localize(timezone)
 
@@ -70,6 +100,17 @@ def get_availability(product_id: int, location_id: int, timezone: str) -> list[A
 
 
 def get_product_locations(product_id: int) -> str:
+    """Fetch locations where a product is available.
+
+    Args:
+        product_id (int): The ID of the product.
+
+    Returns:
+        str: A string representation of the locations.
+
+    Raises:
+        HTTPException: If no locations are found for the product.
+    """
     logger.debug(f"Fetching locations for product ID {product_id}.")
     locations = db.get_locations_by_product_id(product_id)
     if not locations:
@@ -83,6 +124,14 @@ def get_product_locations(product_id: int) -> str:
 
 
 def get_product_list(assistant_id: str) -> str:
+    """Retrieve a list of products managed by a specific assistant.
+
+    Args:
+        assistant_id (str): The ID of the assistant.
+
+    Returns:
+        str: A string representation of the product list.
+    """
     logger.debug(f"Fetching product list for assistant ID {assistant_id}.")
     products = db.get_products_by_assistant_id(assistant_id)
     product_string = "\n".join(map(str, products))
@@ -92,6 +141,17 @@ def get_product_list(assistant_id: str) -> str:
 
 
 def set_appointment(request: SetAppointmentsRequest) -> str:
+    """Set an appointment in the calendar based on the provided request.
+
+    Args:
+        request (SetAppointmentsRequest): The details of the appointment to set.
+
+    Returns:
+        str: Confirmation message upon successful appointment setting.
+
+    Raises:
+        HTTPException: If resources like associate, business, or location are not found.
+    """
     logger.debug(f"Setting appointment with request: {request}.")
     associate, business = db.get_associate_and_business_by_associate_id(request.associate_id)
     assert associate is not None, f"Associate not found for ID `{request.associate_id}`."
@@ -100,12 +160,15 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     location = db.get_location_by_id(request.location_id)
     assert location is not None, f"Location not found for ID `{request.location_id}`."
 
+    # Convert requested start and end times to UTC
     start_datetime = request.start_datetime.astimezone(pytz.utc)
     end_datetime = request.end_datetime.astimezone(pytz.utc)
 
     if business.calendar_service == "google":
         logger.debug("Using Google Calendar service for appointment.")
         calendar_id = business.calendar_service_id
+
+        # Initialize Google Calendar with service account
         calendar = GoogleCalendar(
             service_account_base64=secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}") or "",
         )  # TODO: be more thoughtful about this credential process
@@ -114,6 +177,7 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
     calendar = get_calendar_by_business_id(business.id)
 
+    # Define the event with necessary details
     event: Event = {
         "summary": request.summary,
         "description": request.description,
@@ -136,6 +200,7 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
         },
     }
 
+    # Add the event to the calendar
     event = calendar.add_event(associate.calendar_id, event)
     assert "id" in event, "Event is missing ID field"
 
@@ -144,6 +209,14 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
 
 
 def get_product_photos(product_id: int) -> str:
+    """Fetch photos associated with a product.
+
+    Args:
+        product_id (int): The ID of the product.
+
+    Returns:
+        str: A string representation of the photos or a message if none are available.
+    """
     logger.debug(f"Fetching photos for product ID {product_id}.")
     photos = db.get_photos_by_product_id(product_id)
     if not photos:

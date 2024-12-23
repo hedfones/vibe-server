@@ -18,16 +18,29 @@ class GoogleCalendar:
         service_account_path: Path | str | None = None,
         service_account_base64: str | None = None,
     ) -> None:
+        """
+        Initialize the GoogleCalendar instance by authenticating the service account.
+
+        Args:
+            service_account_path (Path | str | None): Path to the service account JSON key file.
+            service_account_base64 (str | None): Base64 encoded service account JSON key.
+
+        Raises:
+            ValueError: If neither 'service_account_path' nor 'service_account_base64' are provided.
+        """
         if service_account_path:
+            # Load credentials from a JSON key file if a path is provided
             service_account_path = Path(service_account_path)
             with service_account_path.open("r") as f:
                 creds_info = json.load(f)
         elif service_account_base64:
+            # Decode the base64 string if provided
             decoded = base64.b64decode(service_account_base64)
             creds_info = json.loads(decoded)
         else:
             raise ValueError("Either 'service_account_path' or 'service_account_base64' must be provided.")
 
+        # Authenticate and initialize the calendar service object
         self.service: Resource = self.authenticate(creds_info)
 
     def authenticate(self, creds_info: dict) -> Resource:
@@ -39,10 +52,15 @@ class GoogleCalendar:
             2. Download the JSON key file and save it to your project (e.g., `service_account.json`).
             3. Share the target calendar with the service account's email address, granting appropriate permissions.
 
+        Args:
+            creds_info (dict): Service account credentials information.
+
         Returns:
             Resource: The authenticated Google Calendar API service object.
         """
+        # Create credentials from the service account information
         creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+        # Build the service object for Google Calendar API
         return build("calendar", "v3", credentials=creds)
 
     def create_calendar(self, calendar_name: str) -> str:
@@ -55,7 +73,9 @@ class GoogleCalendar:
         Returns:
             str: The ID of the newly created calendar.
         """
+        # Define the new calendar's summary and time zone
         calendar: dict[str, str] = {"summary": calendar_name, "timeZone": "UTC"}
+        # Create the calendar using the service object
         created_calendar = self.service.calendars().insert(body=calendar).execute()
         print(f"Calendar created: {created_calendar['id']}")
         return created_calendar["id"]
@@ -69,6 +89,7 @@ class GoogleCalendar:
             email (str): The email address with which to share the calendar.
             role (str): The role assigned to the email address ('reader', 'writer', 'owner').
         """
+        # Define the access control rule
         rule = {
             "role": role,
             "scope": {
@@ -78,6 +99,7 @@ class GoogleCalendar:
         }
 
         try:
+            # Insert the access control rule in the calendar's ACL
             self.service.acl().insert(calendarId=calendar_id, body=rule).execute()
             print(f"Shared calendar {calendar_id} with {email} as {role}.")
         except Exception as e:
@@ -94,6 +116,7 @@ class GoogleCalendar:
         Returns:
             Event: The created event details.
         """
+        # Insert the event into the specified calendar
         created_event = self.service.events().insert(calendarId=calendar_id, body=event).execute()
         print(f"Event created: {created_event.get('htmlLink')}")
         return created_event
@@ -110,9 +133,11 @@ class GoogleCalendar:
         Returns:
             list[Event]: A list of events within the specified time range.
         """
+        # Ensure the datetime objects are timezone aware
         assert time_min.tzinfo is not None
         assert time_max.tzinfo is not None
 
+        # Fetch events within the specified time range
         events_result = (
             self.service.events()
             .list(
@@ -130,6 +155,7 @@ class GoogleCalendar:
             print("No events found.")
         else:
             print(f"Found {len(events)} event(s).")
+            # Iterate through events and output their summary and start time
             for event in events:
                 start = event["start"].get("dateTime", event["start"].get("date"))
                 print(f"Event: {event['summary']} | Start: {start}")
@@ -142,6 +168,7 @@ class GoogleCalendar:
         Returns:
             list[dict[str, str]]: A list of dictionaries containing calendar summaries and their IDs.
         """
+        # Fetch list of calendars accessible by the service account
         calendar_list = self.service.calendarList().list().execute()
         calendars = calendar_list.get("items", [])
 
@@ -167,6 +194,7 @@ class GoogleCalendar:
         Args:
             calendar_id (str): The ID of the calendar from which to delete all events.
         """
+        # Paginate through the events and delete them one by one
         page_token = None
         while True:
             events_result = (
@@ -187,6 +215,7 @@ class GoogleCalendar:
 
             for event in events:
                 try:
+                    # Delete each event using its ID
                     self.service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
                     print(f"Deleted event: {event['summary']} | ID: {event['id']}")
                 except Exception as e:
