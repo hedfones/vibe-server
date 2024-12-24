@@ -40,7 +40,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-logging.basicConfig(level=logging.DEBUG)
+structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG))
 log = structlog.stdlib.get_logger()
 
 secrets = SecretsManager()
