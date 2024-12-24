@@ -8,15 +8,15 @@ anyio==4.7.0
     #   openai
     #   starlette
     #   watchfiles
-boto3==1.35.86
+boto3==1.35.87
     # via -r requirements.in
-boto3-stubs==1.35.86
+boto3-stubs==1.35.87
     # via -r requirements.in
-botocore==1.35.86
+botocore==1.35.87
     # via
     #   boto3
     #   s3transfer
-botocore-stubs==1.35.86
+botocore-stubs==1.35.87
     # via
     #   boto3-stubs
     #   types-boto3
@@ -47,6 +47,10 @@ fastapi-cli==0.0.7
 google-api-core==2.24.0
     # via google-api-python-client
 google-api-python-client==2.156.0
+    # via
+    #   -r requirements.in
+    #   google-api-python-client-stubs
+google-api-python-client-stubs==1.28.0
     # via -r requirements.in
 google-auth==2.37.0
     # via
@@ -184,7 +188,7 @@ typer==0.15.1
     # via fastapi-cli
 types-awscrt==0.23.6
     # via botocore-stubs
-types-boto3==1.35.86
+types-boto3==1.35.87
     # via -r requirements.in
 types-boto3-cloudformation==1.35.71
     # via types-boto3
@@ -202,6 +206,8 @@ types-boto3-secretsmanager==1.35.71
     # via types-boto3
 types-boto3-sqs==1.35.71
     # via types-boto3
+types-httplib2==0.22.0.20241221
+    # via google-api-python-client-stubs
 types-s3transfer==0.10.4
     # via
     #   boto3-stubs
@@ -211,6 +217,7 @@ typing-extensions==4.12.2
     #   anyio
     #   boto3-stubs
     #   fastapi
+    #   google-api-python-client-stubs
     #   openai
     #   pydantic
     #   pydantic-core
