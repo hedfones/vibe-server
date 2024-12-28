@@ -1,9 +1,13 @@
 import json
-import logging
+from typing import Callable
 
 import boto3
+import structlog
 from botocore.exceptions import ClientError
 from types_boto3_secretsmanager import SecretsManagerClient
+
+log = structlog.stdlib.get_logger()
+JsonableType = str | int | float | bool | None | dict[str, "JsonableType"] | list["JsonableType"]
 
 
 class SecretsManager:
@@ -18,7 +22,7 @@ class SecretsManager:
         """
         self.client: SecretsManagerClient = boto3.client("secretsmanager")
 
-    def get_secret(self, secret_name: str) -> dict[str, str]:
+    def get_raw(self, secret_name: str) -> dict[str, JsonableType]:
         """
         Retrieves the secret value for the given secret name.
 
@@ -41,7 +45,7 @@ class SecretsManager:
                 return {}
 
         except ClientError as e:
-            logging.error(f"Failed to retrieve secret {secret_name}: {e}")
+            log.error(f"Failed to retrieve secret {secret_name}: {e}")
             raise RuntimeError(f"Failed to retrieve secret {secret_name}") from e
 
     def get(self, secret_name: str, key: str | None = None) -> str:
@@ -59,10 +63,37 @@ class SecretsManager:
         if not key:
             key = secret_name
         try:
-            secret_body = self.get_secret(secret_name)
-            return secret_body.get(key)
+            secret_body = self.get_raw(secret_name)
+            if isinstance(secret_body[key], dict):
+                return json.dumps(secret_body[key])
+            return str(secret_body[key])
         except RuntimeError as e:
             raise ValueError from e
+
+    def update(self, secret_name: str, key: str | None, value: JsonableType) -> None:
+        """
+        Updates the secret value for the given secret name.
+
+        Args:
+            secret_name (str): The name of the secret to update.
+            secret_value (str): The new value for the secret.
+        """
+        try:
+            body = self.get_raw(secret_name)
+            if not key:
+                key = secret_name
+            body[key] = value
+            _ = self.client.update_secret(SecretId=secret_name, SecretString=json.dumps(body))
+            log.info(f"Updated secret {secret_name}")
+        except ClientError as e:
+            log.error(f"Failed to update secret {secret_name}: {e}")
+            raise RuntimeError(f"Failed to update secret {secret_name}") from e
+
+    def get_update_callback(self, secret_name: str) -> Callable[[str, str], None]:
+        def wrapper(secret_key: str, secret_value: JsonableType) -> None:
+            self.update(secret_name, secret_key, secret_value)
+
+        return wrapper
 
 
 if __name__ == "__main__":

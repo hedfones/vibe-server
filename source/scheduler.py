@@ -2,13 +2,13 @@ from datetime import datetime, timedelta
 
 import pytz
 
-from .calendar_service import GoogleCalendar
+from .calendar_service import GoogleCalendarOAuth2
 from .database import DatabaseService
 from .model import Appointment, AvailabilityWindow
 
 
 class Scheduler:
-    def __init__(self, db: DatabaseService, calendar: GoogleCalendar) -> None:
+    def __init__(self, db: DatabaseService, calendar: GoogleCalendarOAuth2) -> None:
         """Initializes the Scheduler with database and calendar services.
 
         Args:
@@ -16,7 +16,7 @@ class Scheduler:
             calendar: An instance of GoogleCalendar used for calendar operations.
         """
         self.db: DatabaseService = db
-        self.calendar: GoogleCalendar = calendar
+        self.calendar: GoogleCalendarOAuth2 = calendar
 
     def split_window(
         self, window: AvailabilityWindow, start_dt: datetime, end_dt: datetime

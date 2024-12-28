@@ -1,8 +1,10 @@
+import json
+
 import pytz
 import structlog
 from fastapi import HTTPException
 
-from .calendar_service import Event, GoogleCalendar
+from .calendar_service import Event, GoogleCalendarOAuth2
 from .database import DatabaseService, PostgresCredentials, Product
 from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
@@ -15,16 +17,16 @@ secrets = SecretsManager()
 
 # Set up database credentials using secrets manager
 db_creds = PostgresCredentials(
-    user=secrets.get("POSTGRES_USER") or "",
-    password=secrets.get("POSTGRES_PASSWORD") or "",
-    database=secrets.get("POSTGRES_DB") or "",
-    host=secrets.get("POSTGRES_HOST") or "",
-    port=int(secrets.get("POSTGRES_PORT") or 6543),
+    user=secrets.get("POSTGRES_USER"),
+    password=secrets.get("POSTGRES_PASSWORD"),
+    database=secrets.get("POSTGRES_DB"),
+    host=secrets.get("POSTGRES_HOST"),
+    port=int(secrets.get("POSTGRES_PORT")),
 )
 db = DatabaseService(db_creds)
 
 
-def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
+def get_calendar_by_business_id(business_id: int) -> GoogleCalendarOAuth2:
     """Fetch Google Calendar for a given business ID.
 
     Args:
@@ -46,13 +48,9 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
         calendar_id = business.calendar_service_id
 
         # Fetch the Google service account credentials for the calendar
-        service_account = secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}")
-        if not service_account:
-            logger.error("Google Calendar credentials not found.")
-            raise HTTPException(
-                status_code=500, detail=f"Google Calendar credentials not found for calendar ID: {calendar_id}"
-            )
-        return GoogleCalendar(service_account_base64=service_account)
+        creds = secrets.get_raw(f"GOOGLE_OAUTH2_{calendar_id}")
+        secret, token = creds["secret"], creds.get("token")
+        return GoogleCalendarOAuth2(json.dumps(secret), json.dumps(token) if token else None)
     else:
         logger.error("Unrecognized calendar service.", service=business.calendar_service)
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
@@ -169,17 +167,6 @@ def set_appointment(request: SetAppointmentsRequest) -> str:
     end_datetime = request.end_datetime.astimezone(pytz.utc)
 
     logger = logger.bind(calendar_service=business.calendar_service)
-    if business.calendar_service == "google":
-        logger.debug("Using Google Calendar service for appointment.")
-        calendar_id = business.calendar_service_id
-
-        # Initialize Google Calendar with service account
-        calendar = GoogleCalendar(
-            service_account_base64=secrets.get(f"GOOGLE_SERVICE_ACCOUNT_{calendar_id}") or "",
-        )  # TODO: be more thoughtful about this credential process
-    else:
-        logger.error("Unrecognized calendar service for appointment.")
-        raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
     calendar = get_calendar_by_business_id(business.id)
 
     # Define the event with necessary details

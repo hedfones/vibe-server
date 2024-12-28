@@ -2,4 +2,4 @@
 line-length = 120
 lint.select = ["E", "F", "I", "B"]
 lint.ignore = ["E501", "B008"]
-exclude = ["resources/scripts/util*", ".venv"]
+exclude = ["resources/scripts/util*", ".venv", "temp"]
