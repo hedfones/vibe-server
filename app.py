@@ -231,6 +231,7 @@ async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
     """
     file_contents = await file.read()
     file_uid = file.filename  # or any unique identifier scheme
+    assert file_uid is not None, "File has no filename"
     upload_success = file_manager.upload_file(file_uid, file_contents)
 
     if not upload_success:
