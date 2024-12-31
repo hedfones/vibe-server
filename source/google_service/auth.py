@@ -50,7 +50,7 @@ class GoogleServiceBase(Generic[T]):
                 token_bytes = base64.b64decode(token)
                 creds = pickle.loads(token_bytes)
         except Exception as e:
-            log.error(f"Failed to load credentials from Secrets Manager: {e}")
+            log.exception(f"Failed to load credentials from Secrets Manager: {e}")
 
         # If credentials are not available or invalid, initiate OAuth2 flow
         if not creds or not creds.valid:
@@ -59,7 +59,7 @@ class GoogleServiceBase(Generic[T]):
                     creds.refresh(Request())
                     log.info("Credentials refreshed.")
                 except Exception as e:
-                    log.error(f"Error refreshing credentials: {e}")
+                    log.exception(f"Error refreshing credentials: {e}")
                     creds = None
 
             if not creds or not creds.valid:
@@ -69,7 +69,7 @@ class GoogleServiceBase(Generic[T]):
                     creds = flow.run_local_server(port=8081)
                     log.info("Credentials obtained from OAuth flow.")
                 except Exception as e:
-                    log.error(f"Error during OAuth flow: {e}")
+                    log.exception(f"Error during OAuth flow: {e}")
                     raise
 
             # Serialize and store the updated credentials back to Secrets Manager
@@ -78,7 +78,7 @@ class GoogleServiceBase(Generic[T]):
                 token_encoded = base64.b64encode(token_pickle).decode("utf-8")
                 refresh_callback("token", token_encoded)
             except Exception as e:
-                log.error(f"Failed to save credentials to Secrets Manager: {e}")
+                log.exception(f"Failed to save credentials to Secrets Manager: {e}")
                 raise
 
         # Build the Google API service

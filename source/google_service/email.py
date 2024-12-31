@@ -1,7 +1,11 @@
 from base64 import urlsafe_b64encode
 from email.mime.text import MIMEText
 
+import structlog
+
 from .auth import GoogleServiceBase
+
+log = structlog.stdlib.get_logger()
 
 
 class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
@@ -24,11 +28,11 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
 
         try:
             self.service.users().messages().send(userId="me", body={"raw": raw_message}).execute()
-            print(f"Email sent to {to}")
-        except Exception as e:
-            print(f"An error occurred while sending the email: {e}")
+            log.info(f"Email sent to {to}")
+        except Exception:
+            log.exception("An error occurred while sending the email.")
 
-    def list_emails(self, query: str = "") -> list:
+    def list_emails(self, query: str = "") -> list[dict[str, str]]:
         """
         Lists emails in the user's Gmail inbox.
 
@@ -40,13 +44,13 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         """
         try:
             response = self.service.users().messages().list(userId="me", q=query).execute()
-            messages = response.get("messages", [])
+            messages: list[dict[str, str]] = response.get("messages", [])
             if not messages:
-                print("No emails found.")
+                log.warning("No emails found.")
                 return []
             else:
-                print(f"Found {len(messages)} email(s).")
+                log.warning(f"Found {len(messages)} email(s).")
                 return messages
-        except Exception as e:
-            print(f"An error occurred while listing emails: {e}")
+        except Exception:
+            log.exception("An error occurred while listing emails")
             return []
