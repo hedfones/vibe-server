@@ -1,5 +1,7 @@
 from typing import Literal, NotRequired, TypedDict
 
+JsonableType = str | int | float | bool | None | dict[str, "JsonableType"] | list["JsonableType"]
+
 
 class Timestamp(TypedDict):
     dateTime: str

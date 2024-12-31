@@ -89,7 +89,7 @@ class SecretsManager:
             log.error(f"Failed to update secret {secret_name}: {e}")
             raise RuntimeError(f"Failed to update secret {secret_name}") from e
 
-    def get_update_callback(self, secret_name: str) -> Callable[[str, str], None]:
+    def get_update_callback(self, secret_name: str) -> Callable[[str, JsonableType], None]:
         def wrapper(secret_key: str, secret_value: JsonableType) -> None:
             self.update(secret_name, secret_key, secret_value)
 

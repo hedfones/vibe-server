@@ -4,8 +4,8 @@ import pytz
 import structlog
 from fastapi import HTTPException
 
-from .calendar_service import Event, GoogleCalendarOAuth2
 from .database import DatabaseService, PostgresCredentials, Product
+from .google_service import Event, GoogleCalendar
 from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
 from .secret_manager import SecretsManager
@@ -26,7 +26,16 @@ db_creds = PostgresCredentials(
 db = DatabaseService(db_creds)
 
 
-def get_calendar_by_business_id(business_id: int) -> GoogleCalendarOAuth2:
+def get_google_calendar_by_calendar_id(calendar_id: str) -> GoogleCalendar:
+    secret_name = f"GOOGLE_OAUTH2_{calendar_id}"
+    creds = secrets.get_raw(secret_name)
+    callback = secrets.get_update_callback(secret_name)
+    secret, token = creds["secret"], creds.get("token")
+    token = json.dumps(token) if token else None
+    return GoogleCalendar.from_oauth2(json.dumps(secret), token, callback)
+
+
+def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
     """Fetch Google Calendar for a given business ID.
 
     Args:
@@ -48,9 +57,7 @@ def get_calendar_by_business_id(business_id: int) -> GoogleCalendarOAuth2:
         calendar_id = business.calendar_service_id
 
         # Fetch the Google service account credentials for the calendar
-        creds = secrets.get_raw(f"GOOGLE_OAUTH2_{calendar_id}")
-        secret, token = creds["secret"], creds.get("token")
-        return GoogleCalendarOAuth2(json.dumps(secret), json.dumps(token) if token else None)
+        return get_google_calendar_by_calendar_id(calendar_id)
     else:
         logger.error("Unrecognized calendar service.", service=business.calendar_service)
         raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
