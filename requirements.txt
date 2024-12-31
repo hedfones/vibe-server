@@ -8,15 +8,15 @@ anyio==4.7.0
     #   openai
     #   starlette
     #   watchfiles
-boto3==1.35.87
+boto3==1.35.90
     # via -r requirements.in
-boto3-stubs==1.35.87
+boto3-stubs==1.35.90
     # via -r requirements.in
-botocore==1.35.87
+botocore==1.35.90
     # via
     #   boto3
     #   s3transfer
-botocore-stubs==1.35.87
+botocore-stubs==1.35.90
     # via
     #   boto3-stubs
     #   types-boto3
@@ -27,7 +27,7 @@ certifi==2024.12.14
     #   httpcore
     #   httpx
     #   requests
-charset-normalizer==3.4.0
+charset-normalizer==3.4.1
     # via requests
 click==8.1.8
     # via
@@ -134,7 +134,7 @@ pydantic-core==2.27.2
     # via pydantic
 pygments==2.18.0
     # via rich
-pyparsing==3.2.0
+pyparsing==3.2.1
     # via httplib2
 python-dateutil==2.9.0.post0
     # via
@@ -158,6 +158,7 @@ requests-oauthlib==2.0.0
     # via google-auth-oauthlib
 rich==13.9.4
     # via
+    #   -r requirements.in
     #   rich-toolkit
     #   typer
 rich-toolkit==0.12.0
@@ -188,7 +189,7 @@ typer==0.15.1
     # via fastapi-cli
 types-awscrt==0.23.6
     # via botocore-stubs
-types-boto3==1.35.87
+types-boto3==1.35.90
     # via -r requirements.in
 types-boto3-cloudformation==1.35.71
     # via types-boto3
@@ -198,7 +199,7 @@ types-boto3-ec2==1.35.82
     # via types-boto3
 types-boto3-lambda==1.35.71
     # via types-boto3
-types-boto3-rds==1.35.82
+types-boto3-rds==1.35.89
     # via types-boto3
 types-boto3-s3==1.35.81
     # via types-boto3

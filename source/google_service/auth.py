@@ -1,5 +1,6 @@
 import base64
 import json
+import pickle
 from typing import Callable, Generic, TypeVar
 
 import structlog
@@ -38,38 +39,49 @@ class GoogleServiceBase(Generic[T]):
     def from_oauth2(
         cls: type[T],
         client_secret: str,  # Accepting client_secret as a string
-        token: str | None = None,  # Accepting token as a string
-        refresh_callback: Callable[[str, JsonableType], None] | None = None,
+        token: str | None,  # Accepting token as a string
+        refresh_callback: Callable[[str, JsonableType], None],
     ) -> T:
-        creds = None
+        creds: Credentials | None = None
 
-        # Load existing tokens if available
-        if token and token.strip():
-            log.debug("REMOVE2", token=token, token_json=json.loads(token))
-            assert isinstance(creds, Credentials), "Wrong credential instance returned"
+        # Attempt to retrieve the stored token from AWS Secrets Manager
+        try:
+            if token:
+                token_bytes = base64.b64decode(token)
+                creds = pickle.loads(token_bytes)
+        except Exception as e:
+            log.error(f"Failed to load credentials from Secrets Manager: {e}")
 
-        # If there are no valid credentials, perform the OAuth2 flow
+        # If credentials are not available or invalid, initiate OAuth2 flow
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                client_secrets = json.loads(client_secret)
-                flow = InstalledAppFlow.from_client_config(client_secrets, SCOPES)
-                creds = flow.run_local_server(port=8081)
+                try:
+                    creds.refresh(Request())
+                    log.info("Credentials refreshed.")
+                except Exception as e:
+                    log.error(f"Error refreshing credentials: {e}")
+                    creds = None
 
-                # Check if the refresh_token is available
-                if hasattr(creds, "refresh_token"):
-                    log.info("Refresh Token obtained: %s", creds.refresh_token)
-                else:
-                    log.warning("No refresh token obtained, please verify your consent screen settings.")
+            if not creds or not creds.valid:
+                try:
+                    client_secrets = json.loads(client_secret)
+                    flow = InstalledAppFlow.from_client_config(client_secrets, SCOPES)
+                    creds = flow.run_local_server(port=8081)
+                    log.info("Credentials obtained from OAuth flow.")
+                except Exception as e:
+                    log.error(f"Error during OAuth flow: {e}")
+                    raise
 
-                # Save the credentials for the next run if a token path is defined
-                creds_json = creds.to_json()
-                log.info("Credentials JSON: %s", creds_json)
-                if refresh_callback is not None and creds_json != token:
-                    refresh_callback("token", json.loads(creds_json))
+            # Serialize and store the updated credentials back to Secrets Manager
+            try:
+                token_pickle = pickle.dumps(creds)
+                token_encoded = base64.b64encode(token_pickle).decode("utf-8")
+                refresh_callback("token", token_encoded)
+            except Exception as e:
+                log.error(f"Failed to save credentials to Secrets Manager: {e}")
+                raise
 
-        # Build the Google Calendar service
+        # Build the Google API service
         service = build(cls.api_name, cls.api_version, credentials=creds)
         return cls(service)
 

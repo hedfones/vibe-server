@@ -2,7 +2,6 @@ pydantic
 fastapi[standard]
 uvicorn
 
-
 openai
 
 pytz
@@ -12,6 +11,7 @@ pyyaml
 
 python-dateutil
 structlog
+rich
 
 google-api-python-client
 google-auth-httplib2
