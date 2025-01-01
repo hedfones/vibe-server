@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import pytz
+from fastapi import HTTPException
 from sqlalchemy import Engine, create_engine, desc
 from sqlmodel import Session, SQLModel, select, text
 
@@ -89,7 +90,7 @@ class DatabaseService:
                 session.add(assistant)
                 session.commit()
 
-    def create_conversation(self, business: Business, client_timezone: str, thread_id: str) -> Conversation:
+    def create_conversation(self, assistant_id: int, client_timezone: str, thread_id: str) -> Conversation:
         """Create a new conversation.
 
         Args:
@@ -101,25 +102,32 @@ class DatabaseService:
             Conversation: The newly created conversation object.
         """
         with Session(self.engine) as session:
-            conversation = Conversation(business_id=business.id, client_timezone=client_timezone, thread_id=thread_id)
+            conversation = Conversation(assistant_id=assistant_id, client_timezone=client_timezone, thread_id=thread_id)
             session.add(conversation)
             session.commit()
             session.refresh(conversation)
         return conversation
 
-    def get_conversation_by_id(self, conversation_id: int) -> Conversation | None:
-        """Retrieve a conversation by its ID.
+    def get_conversation_and_business_by_id(self, conversation_id: int) -> tuple[Conversation, Business]:
+        """Retrieve a conversation by its ID, joining with the business through the assistant.
 
         Args:
             conversation_id (int): The ID of the conversation to retrieve.
 
         Returns:
-            Conversation | None: The corresponding Conversation object if found; otherwise, None.
+            tuple[Conversation, Business] | None: A tuple containing the corresponding Conversation object and Business object if found; otherwise, None.
         """
         with Session(self.engine) as session:
-            stmt = select(Conversation).where(Conversation.id == conversation_id)
-            conversation = session.exec(stmt).first()
-        return conversation
+            stmt = (
+                select(Conversation, Business)
+                .join(Assistant, Assistant.id == Conversation.assistant_id)  # Assuming Conversation has an assistant_id
+                .join(Business, Business.id == Assistant.business_id)
+                .where(Conversation.id == conversation_id)
+            )
+            result = session.exec(stmt).first()
+        if not result:
+            raise HTTPException(404, f"Conversation with ID {conversation_id} not found.")
+        return result
 
     def insert_messages(self, messages: list[Message]) -> None:
         """Insert multiple messages into the database.

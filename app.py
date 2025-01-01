@@ -29,61 +29,6 @@ from source.utils import db, get_email_by_business_id
 app = FastAPI()
 
 
-@app.post("/process-unread-emails/")
-def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
-    """
-    Process unread emails for a business and generate AI responses.
-
-    Args:
-        payload: Request containing business_id
-
-    Returns:
-        Dictionary with count of processed emails
-    """
-    # Get business and verify it exists
-    business = db.get_business_by_id(payload.business_id)
-    if not business:
-        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
-
-    # Initialize Gmail service using business credentials
-    mailbox = get_email_by_business_id(payload.business_id)
-
-    # Get unread emails
-    unread_emails = mailbox.list_emails(query="is:unread")
-
-    # Initialize assistant for generating responses
-    assistant = db.get_assistant_by_business_and_type(payload.business_id, "email")
-    tz = db.get_first_associate_timezone_by_business_id(payload.business_id)
-    assistant = Assistant(openai_creds, assistant.openai_assistant_id, tz)
-
-    processed_count = 0
-    for email in unread_emails:
-        # Get full email content
-        email_content = mailbox.read_email(email["id"])
-        if not email_content:
-            continue
-
-        # Generate AI response using assistant
-        message: AssistantMessage = {
-            "role": "user",
-            "content": f"Subject: {email_content['subject']}\n\nBody: {email_content['body']}",
-        }
-        assistant.add_message(message)
-        response = assistant.retrieve_response()
-
-        # Send response
-        if response:
-            # Extract email address from headers
-            email_content["sender"] = "kalebjs@proton.me"
-            mailbox.send_email(
-                to=email_content.get("sender", ""), subject=f"Re: {email_content['subject']}", body=response
-            )
-            processed_count += 1
-        break
-
-    return {"processed_emails": processed_count}
-
-
 # Add CORSMiddleware to allow requests from the client
 app.add_middleware(
     CORSMiddleware,
@@ -172,13 +117,7 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     Raises HTTP 404 if the conversation with the provided ID is not found.
     """
     new_messages: list[Message] = []
-    conversation = db.get_conversation_by_id(payload.conversation_id)
-    if not conversation:
-        raise HTTPException(404, f"Conversation with ID {payload.conversation_id} not found.")
-
-    business = db.get_business_by_id(conversation.business_id)
-    if not business:
-        raise HTTPException(404, f"Business with ID {conversation.business_id} not found.")
+    conversation, business = db.get_conversation_and_business_by_id(payload.conversation_id)
     new_messages.append(Message(conversation_id=conversation.id, role="user", content=payload.content))
 
     asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
@@ -321,3 +260,67 @@ def read_file(file_uid: str) -> FileResponse:
     tmp_file_path = Path("/tmp") / file_uid
     _ = tmp_file_path.write_bytes(file_bytes)
     return FileResponse(tmp_file_path, filename=file_uid)
+
+
+@app.post("/process-unread-emails/")
+def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
+    """
+    Process unread emails for a business and generate AI responses.
+
+    Args:
+        payload: Request containing business_id
+
+    Returns:
+        Dictionary with count of processed emails
+    """
+    # Get business and verify it exists
+    business = db.get_business_by_id(payload.business_id)
+    if not business:
+        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+
+    # Initialize Gmail service using business credentials
+    mailbox = get_email_by_business_id(payload.business_id)
+
+    # Get unread emails
+    unread_emails = mailbox.list_emails(query="is:unread")
+
+    # Initialize assistant for generating responses
+    asst_config = db.get_assistant_by_business_and_type(payload.business_id, "email")
+    tz = db.get_first_associate_timezone_by_business_id(payload.business_id)
+    assistant = Assistant(openai_creds, asst_config.openai_assistant_id, tz)
+    conversation = db.create_conversation(asst_config.id, tz, assistant.thread.thread_id)
+
+    processed_count = 0
+    thread_ids = set(m["threadId"] for m in unread_emails)
+    for thread_id in thread_ids:
+        # Get full email content
+        thread = mailbox.get_messages_in_thread(thread_id)
+        if not thread:
+            continue
+
+        # Generate AI response using assistant
+        messages: list[Message] = []
+        for email in thread:
+            message: AssistantMessage = {
+                "role": "user",
+                "content": f"Sender: {email['sender']}\n\nSubject: {email['subject']}\n\nBody: {email['body']}",
+            }
+            assistant.add_message(message)
+            messages.append(Message(**message, conversation_id=conversation.id))
+        response = assistant.retrieve_response()
+        messages.append(Message(conversation_id=conversation.id, role="assistant", content=response))
+        db.insert_messages(messages)
+
+        last_message = thread[-1]
+
+        # Send response
+        if response:
+            # Extract email address from headers
+            last_message["sender"] = "kalebjs@proton.me"
+            mailbox.send_email(
+                to=last_message.get("sender", ""), subject=f"Re: {last_message['subject']}", body=response
+            )
+            processed_count += 1
+        break
+
+    return {"processed_emails": processed_count}

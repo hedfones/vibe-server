@@ -27,7 +27,6 @@ class Business(SQLModel, table=True):
     )
 
     # Define relationships to other entities.
-    conversations: list["Conversation"] = Relationship(back_populates="business")
     products: list["Product"] = Relationship(back_populates="business")
     associates: list["Associate"] = Relationship(back_populates="business")
     locations: list["Location"] = Relationship(back_populates="business")
@@ -63,13 +62,14 @@ class Assistant(SQLModel, table=True):
     )
 
     business: "Business" = Relationship(back_populates="assistants")
+    conversations: list["Conversation"] = Relationship(back_populates="assistant")
 
 
 class Conversation(SQLModel, table=True):
     """Represents a conversation related to a business."""
 
     id: int = Field(default=None, primary_key=True)
-    business_id: int = Field(default=None, foreign_key="business.id")
+    assistant_id: int = Field(default=None, foreign_key="assistant.id")
     thread_id: str
     client_timezone: str
     created_at: datetime = Field(
@@ -77,7 +77,7 @@ class Conversation(SQLModel, table=True):
         sa_column=Column(DateTime, server_default=func.now()),
     )
 
-    business: "Business" = Relationship(back_populates="conversations")
+    assistant: "Assistant" = Relationship(back_populates="conversations")
     messages: list["Message"] = Relationship(back_populates="conversation")
 
 

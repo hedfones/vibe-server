@@ -1,5 +1,6 @@
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from email.mime.text import MIMEText
+from typing import Any
 
 import markdown
 import structlog
@@ -62,6 +63,35 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             log.exception("An error occurred while listing emails")
             return []
 
+    def _parse_email_message(self, message: dict[str, Any]) -> EmailMessage | None:
+        """
+        Parses an email message to extract the sender, subject, and body.
+
+        Args:
+            message: The message object from Gmail API response.
+
+        Returns:
+            dict: A dictionary containing the email information, including the sender, subject, and body.
+        """
+        email_data = message.get("payload", {}).get("parts", [])
+        if email_data:
+            # For simplicity, we will extract the first part
+            part = email_data[0]
+            body = part.get("body", {}).get("data", "")
+            # Decode the base64url encoded email body
+            decoded_body = urlsafe_b64decode(body.encode("utf-8")).decode("utf-8")
+
+            # Find the subject and the sender
+            headers = message.get("payload", {}).get("headers", [])
+            subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
+            sender = next((header["value"] for header in headers if header["name"] == "From"), None)
+
+            # Return the email details
+            return {"sender": sender, "subject": subject, "body": decoded_body}
+        else:
+            log.warning(f"No parts found in message with ID: {message.get('id')}")
+            return None
+
     def read_email(self, email_id: str) -> EmailMessage | None:
         """
         Reads an email's full content by its ID.
@@ -73,28 +103,34 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             dict: A dictionary containing the email information, including the sender, subject, and body.
         """
         try:
-            # Retrieve the full email message
             message = self.service.users().messages().get(userId="me", id=email_id, format="full").execute()
-            email_data = message.get("payload", {}).get("parts", [])
-
-            # Decode the email body
-            if email_data:
-                # For simplicity, we will extract the first part
-                part = email_data[0]
-                body = part.get("body", {}).get("data", "")
-                # Decode the base64url encoded email body
-                decoded_body = urlsafe_b64decode(body.encode("utf-8")).decode("utf-8")
-
-                # Find the subject and the sender
-                headers = message.get("payload", {}).get("headers", [])
-                subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
-                sender = next((header["value"] for header in headers if header["name"] == "From"), None)
-
-                # Return the email details
-                return {"sender": sender, "subject": subject, "body": decoded_body}
-            else:
-                log.warning(f"No parts found in email with ID: {email_id}")
-                return
+            return self._parse_email_message(message)
         except Exception:
             log.exception(f"An error occurred while reading the email with ID: {email_id}")
-            return
+            return None
+
+    def get_messages_in_thread(self, thread_id: str) -> list[EmailMessage]:
+        """
+        Retrieves all messages in a given thread.
+
+        Args:
+            thread_id (str): The ID of the thread to retrieve messages from.
+
+        Returns:
+            list: A list of email dictionaries in the thread.
+        """
+        try:
+            thread = self.service.users().threads().get(userId="me", id=thread_id).execute()
+            messages = thread.get("messages", [])
+
+            email_messages = []
+            for message in messages:
+                parsed_message = self._parse_email_message(message)
+                if parsed_message:
+                    email_messages.append(parsed_message)
+
+            return email_messages
+
+        except Exception:
+            log.exception(f"An error occurred while retrieving messages in the thread with ID: {thread_id}")
+            return []
