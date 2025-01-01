@@ -190,7 +190,7 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
     for asst_config in assistant_configs:
         assistant = Assistant(openai_creds, asst_config.openai_assistant_id)
         instructions = f"{asst_config.instructions}\n\n{'-' * 80}\n\n{asst_config.context}"
-        assistant_name = f"Vibe - {business.name}"
+        assistant_name = f"Vibe - {asst_config.type} - {business.name}"
 
         assistant_fields: dict[str, bool | str | int] = asst_config.model_dump()
 
