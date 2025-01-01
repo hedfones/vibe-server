@@ -54,3 +54,39 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         except Exception:
             log.exception("An error occurred while listing emails")
             return []
+
+    def read_email(self, email_id: str) -> dict:
+        """
+        Reads an email's full content by its ID.
+
+        Args:
+            email_id (str): The ID of the email to read.
+
+        Returns:
+            dict: A dictionary containing the email information, including the subject and body.
+        """
+        try:
+            # Retrieve the full email message
+            message = self.service.users().messages().get(userId="me", id=email_id, format="full").execute()
+            email_data = message.get("payload", {}).get("parts", [])
+
+            # Decode the email body
+            if email_data:
+                # For simplicity, we will extract the first part
+                part = email_data[0]
+                body = part.get("body", {}).get("data", "")
+                # Decode the base64url encoded email body
+                decoded_body = urlsafe_b64encode(body).decode()
+
+                # Find the subject
+                headers = message.get("payload", {}).get("headers", [])
+                subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
+
+                # Return the email details
+                return {"subject": subject, "body": decoded_body}
+            else:
+                log.warning(f"No parts found in email with ID: {email_id}")
+                return {}
+        except Exception:
+            log.exception(f"An error occurred while reading the email with ID: {email_id}")
+            return {}
