@@ -84,12 +84,11 @@ def initialize_conversation(payload: ConversationInitRequest) -> ConversationIni
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
 
     # create thread
-    assistant_details = db.get_assistant_by_business_and_type(business.id, "chat")
-    assistant = Assistant(openai_creds, assistant_details.openai_assistant_id, payload.client_timezone)
-    conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.thread_id)
-    # assistant.add_message({"role": "system", "content": business.context})
-    assert assistant_details.start_message is not None
-    assistant.add_message({"role": "assistant", "content": assistant_details.start_message})
+    asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
+    assistant = Assistant(openai_creds, asst_config.openai_assistant_id, payload.client_timezone)
+    conversation = db.create_conversation(asst_config.id, payload.client_timezone, assistant.thread.thread_id)
+    assert asst_config.start_message is not None
+    assistant.add_message({"role": "assistant", "content": asst_config.start_message})
 
     asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
     assert asst_config.start_message is not None
