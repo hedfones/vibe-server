@@ -46,13 +46,15 @@ def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
 
     # Initialize Gmail service using business credentials
-    mailbox = get_email_by_business_id(business.id)
+    mailbox = get_email_by_business_id(payload.business_id)
 
     # Get unread emails
     unread_emails = mailbox.list_emails(query="is:unread")
 
     # Initialize assistant for generating responses
-    assistant = Assistant(openai_creds, business.assistant.openai_assistant_id)
+    assistant = db.get_assistant_by_business_and_type(payload.business_id, "email")
+    tz = db.get_first_associate_timezone_by_business_id(payload.business_id)
+    assistant = Assistant(openai_creds, assistant.openai_assistant_id, tz)
 
     processed_count = 0
     for email in unread_emails:
@@ -64,7 +66,7 @@ def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
         # Generate AI response using assistant
         message: AssistantMessage = {
             "role": "user",
-            "content": f"Please write a response to this email:\n\nSubject: {email_content['subject']}\n\nBody: {email_content['body']}",
+            "content": f"Subject: {email_content['subject']}\n\nBody: {email_content['body']}",
         }
         assistant.add_message(message)
         response = assistant.retrieve_response()
@@ -137,15 +139,19 @@ def initialize_conversation(payload: ConversationInitRequest) -> ConversationIni
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
 
     # create thread
-    assistant = Assistant(openai_creds, business.assistant.openai_assistant_id, payload.client_timezone)
+    assistant_details = db.get_assistant_by_business_and_type(business.id, "chat")
+    assistant = Assistant(openai_creds, assistant_details.openai_assistant_id, payload.client_timezone)
     conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.thread_id)
     # assistant.add_message({"role": "system", "content": business.context})
-    assistant.add_message({"role": "assistant", "content": business.assistant.start_message})
+    assert assistant_details.start_message is not None
+    assistant.add_message({"role": "assistant", "content": assistant_details.start_message})
 
+    asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
+    assert asst_config.start_message is not None
     assistant_first_message = Message(
         conversation_id=conversation.id,
         role="assistant",
-        content=business.assistant.start_message,
+        content=asst_config.start_message,
     )
     db.insert_messages([assistant_first_message])
 
@@ -175,8 +181,9 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
         raise HTTPException(404, f"Business with ID {conversation.business_id} not found.")
     new_messages.append(Message(conversation_id=conversation.id, role="user", content=payload.content))
 
+    asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
     assistant = Assistant(
-        openai_creds, business.assistant.openai_assistant_id, conversation.client_timezone, conversation.thread_id
+        openai_creds, asst_config.openai_assistant_id, conversation.client_timezone, conversation.thread_id
     )
     message: AssistantMessage = {"role": "user", "content": payload.content}
     assistant.add_message(message)
@@ -241,38 +248,40 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
     business = db.get_business_by_id(payload.business_id)
     if not business:
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
-    assistant = Assistant(openai_creds, business.assistant.openai_assistant_id)
-    instructions = f"{business.assistant.instructions}\n\n{'-' * 80}\n\n{business.assistant.context}"
-    assistant_name = f"Vibe - {business.name}"
+    assistant_configs = db.get_all_assistants_by_business_id(business.id)
+    for asst_config in assistant_configs:
+        assistant = Assistant(openai_creds, asst_config.openai_assistant_id)
+        instructions = f"{asst_config.instructions}\n\n{'-' * 80}\n\n{asst_config.context}"
+        assistant_name = f"Vibe - {business.name}"
 
-    assistant_fields: dict[str, bool | str | int] = business.assistant.model_dump()
+        assistant_fields: dict[str, bool | str | int] = asst_config.model_dump()
 
-    function_dir = Path("resources/functions")
-    try:
-        with open(function_dir / "function_mapping.yaml", "r") as f:
-            function_fields: dict[str, str] = yaml.safe_load(f)
-    except FileNotFoundError as e:
-        raise HTTPException(500, "Function mapping file not found.") from e
-    except yaml.YAMLError as e:
-        raise HTTPException(500, f"Error parsing function mapping file: {e}") from e
-
-    function_definitions: list[FunctionDefinition] = []
-    for key, filename in function_fields.items():
-        do_use_function = assistant_fields[key]
-        if not do_use_function:
-            continue
-        filepath = function_dir / filename
+        function_dir = Path("resources/functions")
         try:
-            with filepath.open("r") as f:
-                function_definition: FunctionDefinition = json.load(f)
+            with open(function_dir / "function_mapping.yaml", "r") as f:
+                function_fields: dict[str, str] = yaml.safe_load(f)
         except FileNotFoundError as e:
-            raise HTTPException(500, f"Function definition file {filename} not found.") from e
-        except json.JSONDecodeError as e:
-            raise HTTPException(500, f"Error parsing function definition file {filename}: {e}") from e
+            raise HTTPException(500, "Function mapping file not found.") from e
+        except yaml.YAMLError as e:
+            raise HTTPException(500, f"Error parsing function mapping file: {e}") from e
 
-        function_definitions.append(function_definition)
+        function_definitions: list[FunctionDefinition] = []
+        for key, filename in function_fields.items():
+            do_use_function = assistant_fields[key]
+            if not do_use_function:
+                continue
+            filepath = function_dir / filename
+            try:
+                with filepath.open("r") as f:
+                    function_definition: FunctionDefinition = json.load(f)
+            except FileNotFoundError as e:
+                raise HTTPException(500, f"Function definition file {filename} not found.") from e
+            except json.JSONDecodeError as e:
+                raise HTTPException(500, f"Error parsing function definition file {filename}: {e}") from e
 
-    assistant.update_assistant(instructions, assistant_name, business.assistant.model, function_definitions)
+            function_definitions.append(function_definition)
+
+        assistant.update_assistant(instructions, assistant_name, asst_config.model, function_definitions)
 
 
 @app.post("/upload-file/")

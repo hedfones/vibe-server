@@ -13,7 +13,8 @@ import pytz
 from dotenv import load_dotenv
 from sqlmodel import Session
 
-from source import db, get_calendar_by_business_id
+from source import get_calendar_by_business_id
+from source.utils import db
 from source.database import Schedule
 # Assuming you've imported or defined:
 # DatabaseService, PostgresCredentials, Business, Associate, Schedule, Product

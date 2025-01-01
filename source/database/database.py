@@ -68,6 +68,12 @@ class DatabaseService:
             business = session.exec(stmt).first()
         return business
 
+    def get_assistant_by_business_and_type(self, business_id: int, assistant_type: str) -> Assistant:
+        with Session(self.engine) as session:
+            stmt = select(Assistant).where(Assistant.business_id == business_id, Assistant.type == assistant_type)
+            assistant = session.exec(stmt).one()
+        return assistant
+
     def update_assistant_context(self, business_id: int, context: str) -> None:
         """Update the context of a business.
 
@@ -347,3 +353,32 @@ class DatabaseService:
                     setattr(business, key, value)
                 session.add(business)
                 session.commit()
+
+    def get_first_associate_timezone_by_business_id(self, business_id: int) -> str:
+        """Retrieve the timezone of the first associate of a business.
+
+        Args:
+            business_id (int): The ID of the business.
+
+        Returns:
+            str: The timezone of the first associate if found; otherwise, None.
+        """
+        with Session(self.engine) as session:
+            stmt = select(Associate).where(Associate.business_id == business_id)
+            associate = session.exec(stmt).first()
+            assert associate is not None
+        return associate.timezone  # Assuming the Associate model has a timezone attribute
+
+    def get_all_assistants_by_business_id(self, business_id: int) -> list[Assistant]:
+        """Retrieve all assistants associated with a specific business.
+
+        Args:
+            business_id (int): The ID of the business.
+
+        Returns:
+            list[Assistant]: A list of Assistant objects associated with the specified business.
+        """
+        with Session(self.engine) as session:
+            stmt = select(Assistant).where(Assistant.business_id == business_id)
+            assistants = session.exec(stmt).all()
+        return list(assistants)
