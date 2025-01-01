@@ -97,6 +97,8 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
+markdown==3.7
+    # via -r requirements.in
 markdown-it-py==3.0.0
     # via rich
 markupsafe==3.0.2

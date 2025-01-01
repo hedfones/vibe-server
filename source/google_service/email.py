@@ -1,6 +1,7 @@
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from email.mime.text import MIMEText
 
+import markdown
 import structlog
 
 from .auth import GoogleServiceBase
@@ -13,16 +14,21 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
     api_name: str = "gmail"
     api_version: str = "v1"
 
-    def send_email(self, to: str, subject: str, body: str) -> None:
+    def send_email(self, to: str, subject: str, body: str, is_html: bool = False) -> None:
         """
         Sends an email via Gmail.
 
         Args:
             to (str): Recipient email address.
             subject (str): Subject of the email.
-            body (str): Body of the email.
+            body (str): Body of the email, can be markdown or HTML.
+            is_html (bool): True if the body is HTML, False if it is plain text or markdown.
         """
-        message = MIMEText(body)
+        if not is_html:
+            # If it's markdown, convert it to HTML
+            body = markdown.markdown(body)
+
+        message = MIMEText(body, "html")
         message["to"] = to
         message["subject"] = subject
         raw_message = urlsafe_b64encode(message.as_bytes()).decode()
