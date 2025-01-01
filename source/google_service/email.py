@@ -1,4 +1,4 @@
-from base64 import urlsafe_b64encode
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from email.mime.text import MIMEText
 
 import structlog
@@ -76,7 +76,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
                 part = email_data[0]
                 body = part.get("body", {}).get("data", "")
                 # Decode the base64url encoded email body
-                decoded_body = urlsafe_b64encode(body).decode()
+                decoded_body = urlsafe_b64decode(body.encode("utf-8")).decode("utf-8")
 
                 # Find the subject
                 headers = message.get("payload", {}).get("headers", [])
@@ -89,4 +89,5 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
                 return {}
         except Exception:
             log.exception(f"An error occurred while reading the email with ID: {email_id}")
+            raise
             return {}
