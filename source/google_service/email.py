@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 import structlog
 
 from .auth import GoogleServiceBase
+from .model import EmailListItem, EmailMessage
 
 log = structlog.stdlib.get_logger()
 
@@ -32,7 +33,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         except Exception:
             log.exception("An error occurred while sending the email.")
 
-    def list_emails(self, query: str = "") -> list[dict[str, str]]:
+    def list_emails(self, query: str = "") -> list[EmailListItem]:
         """
         Lists emails in the user's Gmail inbox.
 
@@ -44,7 +45,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         """
         try:
             response = self.service.users().messages().list(userId="me", q=query).execute()
-            messages: list[dict[str, str]] = response.get("messages", [])
+            messages: list[EmailListItem] = response.get("messages", [])
             if not messages:
                 log.warning("No emails found.")
                 return []
@@ -55,7 +56,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             log.exception("An error occurred while listing emails")
             return []
 
-    def read_email(self, email_id: str) -> dict:
+    def read_email(self, email_id: str) -> EmailMessage | None:
         """
         Reads an email's full content by its ID.
 
@@ -63,7 +64,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             email_id (str): The ID of the email to read.
 
         Returns:
-            dict: A dictionary containing the email information, including the subject and body.
+            dict: A dictionary containing the email information, including the sender, subject, and body.
         """
         try:
             # Retrieve the full email message
@@ -78,16 +79,16 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
                 # Decode the base64url encoded email body
                 decoded_body = urlsafe_b64decode(body.encode("utf-8")).decode("utf-8")
 
-                # Find the subject
+                # Find the subject and the sender
                 headers = message.get("payload", {}).get("headers", [])
                 subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
+                sender = next((header["value"] for header in headers if header["name"] == "From"), None)
 
                 # Return the email details
-                return {"subject": subject, "body": decoded_body}
+                return {"sender": sender, "subject": subject, "body": decoded_body}
             else:
                 log.warning(f"No parts found in email with ID: {email_id}")
-                return {}
+                return
         except Exception:
             log.exception(f"An error occurred while reading the email with ID: {email_id}")
-            raise
-            return {}
+            return

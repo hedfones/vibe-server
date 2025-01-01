@@ -1,66 +1,14 @@
-import json
-
 import pytz
 import structlog
 from fastapi import HTTPException
 
-from .database import DatabaseService, PostgresCredentials, Product
-from .google_service import Event, GoogleCalendar
+from .database import Product
+from .google_service import Event
 from .model import AvailabilityWindow, SetAppointmentsRequest
 from .scheduler import Scheduler
-from .secret_manager import SecretsManager
+from .utils import db, get_calendar_by_business_id
 
 log = structlog.stdlib.get_logger()
-
-# Initialize SecretsManager to manage access to sensitive credentials
-secrets = SecretsManager()
-
-# Set up database credentials using secrets manager
-db_creds = PostgresCredentials(
-    user=secrets.get("POSTGRES_USER"),
-    password=secrets.get("POSTGRES_PASSWORD"),
-    database=secrets.get("POSTGRES_DB"),
-    host=secrets.get("POSTGRES_HOST"),
-    port=int(secrets.get("POSTGRES_PORT")),
-)
-db = DatabaseService(db_creds)
-
-
-def get_google_calendar_by_calendar_id(calendar_id: str) -> GoogleCalendar:
-    secret_name = f"GOOGLE_OAUTH2_{calendar_id}"
-    creds = secrets.get_raw(secret_name)
-    callback = secrets.get_update_callback(secret_name)
-    secret, token = creds["secret"], creds.get("token")
-    token = json.dumps(token) if token else None
-    return GoogleCalendar.from_oauth2(json.dumps(secret), token, callback)
-
-
-def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:
-    """Fetch Google Calendar for a given business ID.
-
-    Args:
-        business_id (int): The ID of the business.
-
-    Returns:
-        GoogleCalendar: An instance of GoogleCalendar configured with credentials.
-
-    Raises:
-        HTTPException: If the business or Google Calendar credentials are not found.
-    """
-    logger = log.bind(business_id=business_id)
-    logger.debug("Fetching calendar by business ID.")
-    business = db.get_business_by_id(business_id)
-    assert business is not None, f"Business not found for ID `{business_id}`."
-
-    if business.calendar_service == "google":
-        logger.debug("Business uses Google Calendar service.")
-        calendar_id = business.calendar_service_id
-
-        # Fetch the Google service account credentials for the calendar
-        return get_google_calendar_by_calendar_id(calendar_id)
-    else:
-        logger.error("Unrecognized calendar service.", service=business.calendar_service)
-        raise HTTPException(400, detail=f"Unrecognized calendar service `{business.calendar_service}`.")
 
 
 def get_availability(product_id: int, location_id: int, timezone: str) -> list[AvailabilityWindow]:

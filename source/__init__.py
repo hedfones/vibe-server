@@ -1,12 +1,6 @@
 from .assistant import Assistant, AssistantMessage, OpenAICredentials
-from .database import (
-    DatabaseService,
-    Message,
-    PostgresCredentials,
-    Product,
-)
+from .database import DatabaseService, Message, PostgresCredentials, Product
 from .file_manager import FileManager
-from .functions import db, get_calendar_by_business_id
 from .model import (
     AvailabilityWindow,
     ConversationInitRequest,
@@ -17,6 +11,7 @@ from .model import (
     UserMessageResponse,
 )
 from .secret_manager import SecretsManager
+from .utils import get_calendar_by_business_id
 
 __all__ = [
     "DatabaseService",
@@ -31,7 +26,6 @@ __all__ = [
     "Message",
     "AvailabilityWindow",
     "Product",
-    "db",
     "AssistantMessage",
     "FileManager",
     "GetPhotoRequest",

@@ -1,7 +1,7 @@
 import base64
 import json
 import pickle
-from typing import Callable, Generic, TypeVar
+from typing import Generic, TypeVar
 
 import structlog
 from google.auth.transport.requests import Request
@@ -10,7 +10,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
 
-from .model import JsonableType
+from .model import SecretUpdateCallbackFunctionType
 
 log = structlog.stdlib.get_logger()
 
@@ -40,7 +40,7 @@ class GoogleServiceBase(Generic[T]):
         cls: type[T],
         client_secret: str,  # Accepting client_secret as a string
         token: str | None,  # Accepting token as a string
-        refresh_callback: Callable[[str, JsonableType], None],
+        refresh_callback: SecretUpdateCallbackFunctionType,
     ) -> T:
         creds: Credentials | None = None
 

@@ -332,3 +332,18 @@ class DatabaseService:
             )
             results = session.exec(stmt).all()
         return list(results)
+
+    def update_business(self, business_id: int, updates: dict[str, str | int | float | bool | None]) -> None:
+        """Update business fields.
+
+        Args:
+            business_id (int): The ID of the business to update
+            updates (dict[str, str]): Dictionary of field names and values to update
+        """
+        with Session(self.engine) as session:
+            business = session.get(Business, business_id)
+            if business:
+                for key, value in updates.items():
+                    setattr(business, key, value)
+                session.add(business)
+                session.commit()

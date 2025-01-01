@@ -1,5 +1,13 @@
 from .auth import GoogleServiceBase
 from .calendar import GoogleCalendar
-from .model import Event
+from .email import GoogleGmail
+from .model import Event, JsonableType, SecretUpdateCallbackFunctionType
 
-__all__ = ["Event", "GoogleCalendar", "GoogleServiceBase"]
+__all__ = [
+    "Event",
+    "GoogleCalendar",
+    "GoogleGmail",
+    "GoogleServiceBase",
+    "JsonableType",
+    "SecretUpdateCallbackFunctionType",
+]

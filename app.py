@@ -21,12 +21,67 @@ from source import (
     SecretsManager,
     UserMessageRequest,
     UserMessageResponse,
-    db,
 )
-from source.model import SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
+from source.model import ProcessEmailsRequest, SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
 from source.notion import NotionPage, NotionService
+from source.utils import db, get_email_by_business_id
 
 app = FastAPI()
+
+
+@app.post("/process-unread-emails/")
+def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
+    """
+    Process unread emails for a business and generate AI responses.
+
+    Args:
+        payload: Request containing business_id
+
+    Returns:
+        Dictionary with count of processed emails
+    """
+    # Get business and verify it exists
+    business = db.get_business_by_id(payload.business_id)
+    if not business:
+        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+
+    # Initialize Gmail service using business credentials
+    mailbox = get_email_by_business_id(business.id)
+
+    # Get unread emails
+    unread_emails = mailbox.list_emails(query="is:unread")
+
+    # Initialize assistant for generating responses
+    assistant = Assistant(openai_creds, business.assistant.openai_assistant_id)
+
+    processed_count = 0
+    for email in unread_emails:
+        # Get full email content
+        email_content = mailbox.read_email(email["id"])
+        if not email_content:
+            continue
+
+        # Generate AI response using assistant
+        message: AssistantMessage = {
+            "role": "user",
+            "content": f"Please write a response to this email:\n\nSubject: {email_content['subject']}\n\nBody: {email_content['body']}",
+        }
+        assistant.add_message(message)
+        response = assistant.retrieve_response()
+
+        # Send response
+        if response:
+            # Extract email address from headers
+            email_content["sender"] = "kalebjs@proton.me"
+            mailbox.send_email(
+                to=email_content.get("sender", ""), subject=f"Re: {email_content['subject']}", body=response
+            )
+            processed_count += 1
+        break
+
+    return {"processed_emails": processed_count}
+
+
 # Add CORSMiddleware to allow requests from the client
 app.add_middleware(
     CORSMiddleware,

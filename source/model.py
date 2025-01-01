@@ -258,3 +258,7 @@ class UpdateAssistantRequest(BaseModel):
     """
 
     business_id: int
+
+
+class ProcessEmailsRequest(BaseModel):
+    business_id: int

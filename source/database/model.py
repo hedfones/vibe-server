@@ -15,6 +15,8 @@ class Business(SQLModel, table=True):
     name: str
     calendar_service: str
     calendar_service_id: str
+    email_service: str
+    email_service_id: str
     notion_page_id: str
     created_at: datetime = Field(
         # Sets the default creation time to now in UTC if not provided.
