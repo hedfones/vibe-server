@@ -15,7 +15,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
     api_name: str = "gmail"
     api_version: str = "v1"
 
-    def send_email(self, to: str, subject: str, body: str, is_html: bool = False) -> None:
+    def send_email(self, to: str, subject: str, body: str, is_html: bool = False, thread_id: str = None) -> None:
         """
         Sends an email via Gmail.
 
@@ -24,6 +24,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             subject (str): Subject of the email.
             body (str): Body of the email, can be markdown or HTML.
             is_html (bool): True if the body is HTML, False if it is plain text or markdown.
+            thread_id (str): The ID of the thread to which this email is a reply.
         """
         if not is_html:
             # If it's markdown, convert it to HTML
@@ -32,11 +33,20 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         message = MIMEText(body, "html")
         message["to"] = to
         message["subject"] = subject
+        if thread_id:
+            message["In-Reply-To"] = thread_id
+            message["References"] = thread_id
+
         raw_message = urlsafe_b64encode(message.as_bytes()).decode()
 
         try:
-            self.service.users().messages().send(userId="me", body={"raw": raw_message}).execute()
-            log.info(f"Email sent to {to}")
+            # Create the message body and specify the thread ID
+            body_payload = {"raw": raw_message}
+            if thread_id:
+                body_payload["threadId"] = thread_id  # Include threadId if provided
+
+            self.service.users().messages().send(userId="me", body=body_payload).execute()
+            log.info(f"Email sent to {to} in thread {thread_id}")
         except Exception:
             log.exception("An error occurred while sending the email.")
 
@@ -65,13 +75,13 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
 
     def _parse_email_message(self, message: dict[str, Any]) -> EmailMessage | None:
         """
-        Parses an email message to extract the sender, subject, and body.
+        Parses an email message to extract the sender, subject, body, and date.
 
         Args:
             message: The message object from Gmail API response.
 
         Returns:
-            dict: A dictionary containing the email information, including the sender, subject, and body.
+            dict: A dictionary containing the email information, including the sender, subject, body, and date.
         """
         email_data = message.get("payload", {}).get("parts", [])
         if email_data:
@@ -81,13 +91,14 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             # Decode the base64url encoded email body
             decoded_body = urlsafe_b64decode(body.encode("utf-8")).decode("utf-8")
 
-            # Find the subject and the sender
+            # Find the subject, sender, and date
             headers = message.get("payload", {}).get("headers", [])
             subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
             sender = next((header["value"] for header in headers if header["name"] == "From"), None)
+            date_sent = next((header["value"] for header in headers if header["name"] == "Date"), None)
 
             # Return the email details
-            return {"sender": sender, "subject": subject, "body": decoded_body}
+            return {"sender": sender, "subject": subject, "body": decoded_body, "date_sent": date_sent}
         else:
             log.warning(f"No parts found in message with ID: {message.get('id')}")
             return None

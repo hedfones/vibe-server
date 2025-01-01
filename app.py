@@ -317,7 +317,10 @@ def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
             # Extract email address from headers
             last_message["sender"] = "kalebjs@proton.me"
             mailbox.send_email(
-                to=last_message.get("sender", ""), subject=f"Re: {last_message['subject']}", body=response
+                to=last_message.get("sender", ""),
+                subject=f"Re: {last_message['subject']}",
+                body=response,
+                thread_id=thread_id,
             )
             processed_count += 1
         break
