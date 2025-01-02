@@ -436,3 +436,8 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = select(ApiKey).where(ApiKey.key == api_key)
             return session.exec(stmt).one_or_none() is not None
+
+    def insert_photos(self, photos: list[Photo]) -> None:
+        with Session(self.engine) as session:
+            session.bulk_save_objects(photos)
+            session.commit()

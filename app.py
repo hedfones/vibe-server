@@ -1,17 +1,19 @@
 import json
 import logging
+import uuid
 from functools import cache
 from pathlib import Path
 
 import structlog
 import yaml
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from openai.types.shared_params.function_definition import FunctionDefinition
 
 from source import Assistant, AssistantMessage, FileManager, OpenAICredentials, SecretsManager
-from source.database import Message
+from source.database import Message, Photo
+from source.generative_ai_service import describe_image
 from source.model import (
     ConversationInitRequest,
     ConversationInitResponse,
@@ -318,3 +320,37 @@ def process_unread_emails(x_api_key: str = Header(...)) -> dict[str, int]:
         processed_count += 1
 
     return {"processed_emails": processed_count}
+
+
+@app.post("/upload-photo/", dependencies=[Depends(api_key_dependency)])
+async def upload_photo(
+    file: UploadFile = File(...), description: str = Form(None), x_api_key: str = Header(...)
+) -> Photo:
+    """
+    Upload a photo to the server and add it to the database.
+
+    - **file**: The image file to upload.
+    - **description**: Optional description for the photo. If not provided, will be generated.
+
+    Returns a response indicating the success of the operation and the photo ID.
+    """
+    # Save the file contents
+    file_contents = await file.read()
+    file_uid = str(uuid.uuid4()) + Path(file.filename).suffix
+    upload_success = file_manager.upload_file(file_uid, file_contents)
+
+    if not upload_success:
+        raise HTTPException(500, "Failed to upload photo.")
+
+    # Use the describe_image function if no description is provided
+    if not description:
+        image_path = Path("/tmp") / file_uid  # Save temporarily to describe it
+        _ = image_path.write_bytes(file_contents)  # Writing bytes to file for description
+        description = describe_image(image_path)
+
+    # Store photo information in the database
+    business = db.get_business_by_api_key(x_api_key)
+    new_photo = Photo(file_uid=file_uid, description=description, business_id=business.id)
+    db.insert_photos([new_photo])
+
+    return new_photo

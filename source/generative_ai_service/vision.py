@@ -6,11 +6,12 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from PIL import Image
 
+MAX_RESOLUTION = 3000  # pixels
+
 
 def encode_image(image_path: str | Path) -> str:
     with Image.open(image_path) as img:
-        # Check if the image is high resolution (example threshold: 3000 pixels in width)
-        if img.width > 3000 or img.height > 3000:
+        if img.width > MAX_RESOLUTION or img.height > MAX_RESOLUTION:
             # Calculate new size while maintaining aspect ratio
             aspect_ratio = img.width / img.height
             new_width = 1500  # Desired width
