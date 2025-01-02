@@ -10,13 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from openai.types.shared_params.function_definition import FunctionDefinition
 
-from source import (
-    Assistant,
-    AssistantMessage,
-    FileManager,
-    OpenAICredentials,
-    SecretsManager,
-)
+from source import Assistant, AssistantMessage, FileManager, OpenAICredentials, SecretsManager
 from source.database import Message
 from source.model import (
     ConversationInitRequest,
