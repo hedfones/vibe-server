@@ -197,7 +197,7 @@ class GetPhotoRequest(BaseModel):
 
 
 class HandoffToAdminRequest(BaseModel):
-    customer_contact_information: str
+    customer_email: str
 
 
 class Appointment(BaseModel):

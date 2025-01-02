@@ -3,6 +3,7 @@ import json
 import pytz
 import structlog
 from fastapi import HTTPException
+from markdown import markdown
 
 from .database import Product
 from .google_service import Event
@@ -196,18 +197,22 @@ def handoff_conversation_to_admin(customer_contact_information: str, thread_id: 
     # Format the conversation messages for Markdown
     formatted_conversation: list[str] = []
     for message in messages:
-        formatted_conversation.append(f"**{message.role.capitalize()}**: {message.content}")
+        formatted_conversation.append(
+            "<div style='border: 1px solid #ccc; padding: 8px; margin: 5px 0; "
+            + "background-color: #f9f9f9; border-radius: 4px;'>"
+            + f"<strong>{message.role.capitalize()}</strong>: {markdown(message.content)}</div>"
+        )
 
     # Join the formatted messages together
-    conversation_markdown = "\n\n".join(formatted_conversation)
+    conversation_html = "<br>".join(formatted_conversation)
 
     email_template = (
-        "Dear {admin_name},\n\n"
-        "A customer needs your attention. Here is the customer information:\n\n"
-        "{customer_information}\n\n"
-        "And here is the conversation:\n\n"
-        "{conversation}\n\n"
-        "Best regards,\nYour Team"
+        "Dear {admin_name},<br><br>"
+        "A customer needs your attention. Here is the customer information:<br><br>"
+        "{customer_information}<br><br>"
+        "And here is the conversation:<br><br>"
+        "{conversation}<br><br>"
+        "Best regards,<br>Your Team"
     )
 
     mailbox = get_email_by_business_id(business.id)
@@ -215,8 +220,8 @@ def handoff_conversation_to_admin(customer_contact_information: str, thread_id: 
     for admin in admins:
         log.debug("Sending email", recipient=admin)
         email_body = email_template.format(
-            admin_name=admin.name, customer_information=customer_contact_information, conversation=conversation_markdown
+            admin_name=admin.name, customer_information=customer_contact_information, conversation=conversation_html
         )
-        mailbox.send_email(admin.email, subject="Customer Assistance Required", body=email_body)
+        mailbox.send_email(admin.email, subject="Customer Assistance Required", body=email_body, is_html=True)
 
     return "Successfully sent emails to admins."

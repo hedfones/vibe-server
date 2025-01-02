@@ -4,11 +4,11 @@
     "strict": true,
     "parameters": {
         "type": "object",
-        "required": ["customer_contact_information"],
+        "required": ["customer_email"],
         "properties": {
-            "customer_contact_information": {
+            "customer_email": {
                 "type": "string",
-                "description": "Concise natural language describing the customer's contact information including name and email/phone number."
+                "description": "Customer email for admin to reach out to them through."
             }
         },
         "additionalProperties": false

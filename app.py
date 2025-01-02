@@ -115,9 +115,8 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
 
     Raises HTTP 404 if the conversation with the provided ID is not found.
     """
-    new_messages: list[Message] = []
     conversation, business = db.get_conversation_and_business_by_id(payload.conversation_id)
-    new_messages.append(Message(conversation_id=conversation.id, role="user", content=payload.content))
+    db.insert_messages([Message(conversation_id=conversation.id, role="user", content=payload.content)])
 
     asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
     assistant = Assistant(
@@ -126,11 +125,11 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     message: AssistantMessage = {"role": "user", "content": payload.content}
     assistant.add_message(message)
     message_response = assistant.retrieve_response()
-    new_messages.append(Message(conversation_id=conversation.id, role="assistant", content=message_response))
+    new_message = Message(conversation_id=conversation.id, role="assistant", content=message_response)
 
-    db.insert_messages(new_messages)
+    db.insert_messages([new_message])
 
-    response = UserMessageResponse(message=new_messages[-1])
+    response = UserMessageResponse(message=new_message)
     return response
 
 

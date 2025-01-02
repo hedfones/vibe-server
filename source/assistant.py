@@ -177,7 +177,7 @@ class Assistant:
             elif tool.function.name == "handoff_to_admin":
                 tool_log.debug("Processing handoff_to_admin")
                 request = HandoffToAdminRequest.model_validate(arguments)
-                body = handoff_conversation_to_admin(request.customer_contact_information, self.thread.thread_id)
+                body = handoff_conversation_to_admin(request.customer_email, self.thread.thread_id)
             else:
                 tool_log.error("Unexpected tool function called")
                 raise Exception("Unexpected tool function called: {}".format(tool.function.name))
