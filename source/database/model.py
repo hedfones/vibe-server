@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from enum import Enum
 
@@ -32,6 +33,23 @@ class Business(SQLModel, table=True):
     locations: list["Location"] = Relationship(back_populates="business")
     photos: list["Photo"] = Relationship(back_populates="business")
     assistants: list["Assistant"] = Relationship(back_populates="business")
+    admins: list["Admin"] = Relationship(back_populates="business")
+    api_keys: list["ApiKey"] = Relationship(back_populates="business")
+
+
+class Admin(SQLModel, table=True):
+    id: int = Field(default=None, primary_key=True)
+    business_id: int = Field(default=None, foreign_key="business.id")
+    name: str
+    email: str
+    created_at: datetime = Field(
+        # Sets the default creation time to now in UTC if not provided.
+        default_factory=lambda: datetime.now(utc),
+        # Sets the server's default column value for the creation time.
+        sa_column=Column(DateTime, server_default=func.now()),
+    )
+
+    business: "Business" = Relationship(back_populates="admins")
 
 
 class AssistantType(str, Enum):
@@ -56,6 +74,7 @@ class Assistant(SQLModel, table=True):
     uses_function_get_product_locations: bool = False
     uses_function_get_product_photos: bool = False
     uses_function_set_appointment: bool = False
+    uses_handoff_to_admin: bool = False
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(utc),
         sa_column=Column(DateTime, server_default=func.now()),
@@ -261,3 +280,17 @@ class Schedule(SQLModel, table=True):
     def end_dtz(self) -> datetime:
         """Returns the end datetime localized to UTC."""
         return pytz.UTC.localize(self.end_datetime)
+
+
+class ApiKey(SQLModel, table=True):
+    """Represents an API key with an associated business."""
+
+    id: int = Field(default=None, primary_key=True)
+    key: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    business_id: int = Field(default=None, foreign_key="business.id")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(utc),
+        sa_column=Column(DateTime, server_default=func.now()),
+    )
+
+    business: "Business" = Relationship(back_populates="api_keys")

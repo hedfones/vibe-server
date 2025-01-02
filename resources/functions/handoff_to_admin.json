@@ -1,0 +1,16 @@
+{
+    "name": "handoff_to_admin",
+    "description": "Sends emails to admins assigned to customer relations. Email includes customer contact information and conversation information.",
+    "strict": true,
+    "parameters": {
+        "type": "object",
+        "required": ["customer_email"],
+        "properties": {
+            "customer_email": {
+                "type": "string",
+                "description": "Customer email for admin to reach out to them through."
+            }
+        },
+        "additionalProperties": false
+    }
+}

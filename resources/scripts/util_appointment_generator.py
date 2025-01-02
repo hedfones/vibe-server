@@ -14,12 +14,12 @@ from dotenv import load_dotenv
 from sqlmodel import Session
 
 from source import get_calendar_by_business_id
-from source.utils import db
 from source.database import Schedule
 # Assuming you've imported or defined:
 # DatabaseService, PostgresCredentials, Business, Associate, Schedule, Product
 # GoogleCalendar, and using the Event definition you provided
 from source.google_service import Event  # Using the provided Event TypedDict
+from source.utils import db
 
 _ = load_dotenv(override=True)
 calendar = get_calendar_by_business_id(1)

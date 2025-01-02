@@ -7,6 +7,8 @@ from sqlalchemy import Engine, create_engine, desc
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
+    Admin,
+    ApiKey,
     Assistant,
     Associate,
     AssociateProductLink,
@@ -67,6 +69,21 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = select(Business).where(Business.id == business_id)
             business = session.exec(stmt).first()
+        return business
+
+    def get_business_by_api_key(self, api_key: str) -> Business:
+        """Retrieve a Business by its ID.
+
+        Args:
+            business_id (int): The ID of the business to retrieve.
+
+        Returns:
+            Business | None: The corresponding Business object if found; otherwise, None.
+        """
+        with Session(self.engine) as session:
+            stmt = select(ApiKey).where(ApiKey.key == api_key)
+            apikey = session.exec(stmt).one()
+            business = apikey.business
         return business
 
     def get_assistant_by_business_and_type(self, business_id: int, assistant_type: str) -> Assistant:
@@ -390,3 +407,32 @@ class DatabaseService:
             stmt = select(Assistant).where(Assistant.business_id == business_id)
             assistants = session.exec(stmt).all()
         return list(assistants)
+
+    def get_all_admins_by_thread_id(self, thread_id: str) -> tuple[Business, list[Admin]]:
+        with Session(self.engine) as session:
+            stmt = select(Conversation).where(Conversation.thread_id == thread_id)
+            conversation = session.exec(stmt).one()
+            business = conversation.assistant.business
+            admins = business.admins
+        return business, list(admins)
+
+    def get_messages_by_thread_id(self, thread_id: str) -> list[Message]:
+        """Retrieve messages associated with a specific conversation.
+
+        Args:
+            conversation_id (int): The ID of the conversation.
+
+        Returns:
+            list[Message]: A list of Message objects associated with the specified conversation.
+        """
+        with Session(self.engine) as session:
+            stmt = select(Conversation).where(Conversation.thread_id == thread_id)
+            conversation = session.exec(stmt).one()
+            messages = conversation.messages
+        return list(messages)
+
+    def validate_api_key(self, api_key: str) -> bool:
+        """Validates the provided API key against the database."""
+        with Session(self.engine) as session:
+            stmt = select(ApiKey).where(ApiKey.key == api_key)
+            return session.exec(stmt).one_or_none() is not None
