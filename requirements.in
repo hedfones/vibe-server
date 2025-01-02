@@ -25,3 +25,10 @@ types-boto3[essential, secretsmanager]
 boto3-stubs
 
 Markdown
+
+langchain 
+openai 
+transformers
+langchain-openai 
+langchain-core 
+Pillow
