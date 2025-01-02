@@ -12,8 +12,21 @@ from openai.types.beta.threads import Run
 from openai.types.beta.threads.run_submit_tool_outputs_params import ToolOutput
 from openai.types.shared_params.function_definition import FunctionDefinition
 
-from .functions import get_availability, get_product_list, get_product_locations, get_product_photos, set_appointment
-from .model import CheckAvailabilityRequest, GetProductLocationsRequest, GetProductPhotosRequest, SetAppointmentsRequest
+from .functions import (
+    get_availability,
+    get_product_list,
+    get_product_locations,
+    get_product_photos,
+    handoff_conversation_to_admin,
+    set_appointment,
+)
+from .model import (
+    CheckAvailabilityRequest,
+    GetProductLocationsRequest,
+    GetProductPhotosRequest,
+    HandoffToAdminRequest,
+    SetAppointmentsRequest,
+)
 
 log = structlog.stdlib.get_logger()
 
@@ -161,6 +174,10 @@ class Assistant:
                 tool_log.debug("Processing get_product_photos")
                 request = GetProductPhotosRequest.model_validate(arguments)
                 body = get_product_photos(request.product_id)
+            elif tool.function.name == "handoff_to_admin":
+                tool_log.debug("Processing handoff_to_admin")
+                request = HandoffToAdminRequest.model_validate(arguments)
+                body = handoff_conversation_to_admin(request.customer_contact_information, self.thread.thread_id)
             else:
                 tool_log.error("Unexpected tool function called")
                 raise Exception("Unexpected tool function called: {}".format(tool.function.name))

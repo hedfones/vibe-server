@@ -3,3 +3,4 @@ uses_function_get_product_list: get_product_list.json
 uses_function_get_product_locations: get_product_locations.json
 uses_function_get_product_photos: get_product_photos.json
 uses_function_set_appointment: set_appointment.json
+uses_handoff_to_admin: handoff_to_admin.json

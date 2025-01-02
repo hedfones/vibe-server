@@ -7,6 +7,7 @@ from sqlalchemy import Engine, create_engine, desc
 from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
+    Admin,
     Assistant,
     Associate,
     AssociateProductLink,
@@ -390,3 +391,26 @@ class DatabaseService:
             stmt = select(Assistant).where(Assistant.business_id == business_id)
             assistants = session.exec(stmt).all()
         return list(assistants)
+
+    def get_all_admins_by_thread_id(self, thread_id: str) -> tuple[Business, list[Admin]]:
+        with Session(self.engine) as session:
+            stmt = select(Conversation).where(Conversation.thread_id == thread_id)
+            conversation = session.exec(stmt).one()
+            business = conversation.assistant.business
+            admins = business.admins
+        return business, list(admins)
+
+    def get_messages_by_thread_id(self, thread_id: str) -> list[Message]:
+        """Retrieve messages associated with a specific conversation.
+
+        Args:
+            conversation_id (int): The ID of the conversation.
+
+        Returns:
+            list[Message]: A list of Message objects associated with the specified conversation.
+        """
+        with Session(self.engine) as session:
+            stmt = select(Conversation).where(Conversation.thread_id == thread_id)
+            conversation = session.exec(stmt).one()
+            messages = conversation.messages
+        return list(messages)

@@ -8,7 +8,7 @@ from .database import Product
 from .google_service import Event
 from .model import SetAppointmentsRequest
 from .scheduler import Scheduler
-from .utils import db, get_calendar_by_business_id
+from .utils import db, get_calendar_by_business_id, get_email_by_business_id
 
 log = structlog.stdlib.get_logger()
 
@@ -181,3 +181,42 @@ def get_product_photos(product_id: int) -> str:
 
     log.debug("Photos fetched successfully.")
     return photo_string
+
+
+def handoff_conversation_to_admin(customer_contact_information: str, thread_id: str) -> str:
+    """
+    get email
+    get admin(s) email(s)
+    display conversation as markdown
+    send email
+    """
+    business, admins = db.get_all_admins_by_thread_id(thread_id)
+    messages = db.get_messages_by_thread_id(thread_id)
+
+    # Format the conversation messages for Markdown
+    formatted_conversation: list[str] = []
+    for message in messages:
+        formatted_conversation.append(f"**{message.role.capitalize()}**: {message.content}")
+
+    # Join the formatted messages together
+    conversation_markdown = "\n\n".join(formatted_conversation)
+
+    email_template = (
+        "Dear {admin_name},\n\n"
+        "A customer needs your attention. Here is the customer information:\n\n"
+        "{customer_information}\n\n"
+        "And here is the conversation:\n\n"
+        "{conversation}\n\n"
+        "Best regards,\nYour Team"
+    )
+
+    mailbox = get_email_by_business_id(business.id)
+
+    for admin in admins:
+        log.debug("Sending email", recipient=admin)
+        email_body = email_template.format(
+            admin_name=admin.name, customer_information=customer_contact_information, conversation=conversation_markdown
+        )
+        mailbox.send_email(admin.email, subject="Customer Assistance Required", body=email_body)
+
+    return "Successfully sent emails to admins."

@@ -196,6 +196,10 @@ class GetPhotoRequest(BaseModel):
     photo_id: int
 
 
+class HandoffToAdminRequest(BaseModel):
+    customer_contact_information: str
+
+
 class Appointment(BaseModel):
     """Model representing an appointment.
 
