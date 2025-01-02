@@ -27,8 +27,7 @@ boto3-stubs
 Markdown
 
 langchain 
-openai 
-transformers
+langchain-core
 langchain-openai 
-langchain-core 
+openai
 Pillow

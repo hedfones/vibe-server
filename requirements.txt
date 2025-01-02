@@ -52,16 +52,10 @@ fastapi==0.115.6
     # via -r requirements.in
 fastapi-cli==0.0.7
     # via fastapi
-filelock==3.16.1
-    # via
-    #   huggingface-hub
-    #   transformers
 frozenlist==1.5.0
     # via
     #   aiohttp
     #   aiosignal
-fsspec==2024.12.0
-    # via huggingface-hub
 google-api-core==2.24.0
     # via google-api-python-client
 google-api-python-client==2.156.0
@@ -102,10 +96,6 @@ httpx==0.28.1
     #   langsmith
     #   notion-client
     #   openai
-huggingface-hub==0.27.0
-    # via
-    #   tokenizers
-    #   transformers
 idna==3.10
     # via
     #   anyio
@@ -156,9 +146,7 @@ multidict==6.1.0
 notion-client==2.3.0
     # via -r requirements.in
 numpy==1.26.4
-    # via
-    #   langchain
-    #   transformers
+    # via langchain
 oauthlib==3.2.2
     # via requests-oauthlib
 openai==1.58.1
@@ -168,10 +156,7 @@ openai==1.58.1
 orjson==3.10.13
     # via langsmith
 packaging==24.2
-    # via
-    #   huggingface-hub
-    #   langchain-core
-    #   transformers
+    # via langchain-core
 pillow==11.1.0
     # via -r requirements.in
 propcache==0.2.1
@@ -221,25 +206,19 @@ pytz==2024.2
 pyyaml==6.0.2
     # via
     #   -r requirements.in
-    #   huggingface-hub
     #   langchain
     #   langchain-core
-    #   transformers
     #   uvicorn
 regex==2024.11.6
-    # via
-    #   tiktoken
-    #   transformers
+    # via tiktoken
 requests==2.32.3
     # via
     #   google-api-core
-    #   huggingface-hub
     #   langchain
     #   langsmith
     #   requests-oauthlib
     #   requests-toolbelt
     #   tiktoken
-    #   transformers
 requests-oauthlib==2.0.0
     # via google-auth-oauthlib
 requests-toolbelt==1.0.0
@@ -255,8 +234,6 @@ rsa==4.9
     # via google-auth
 s3transfer==0.10.4
     # via boto3
-safetensors==0.5.0
-    # via transformers
 shellingham==1.5.4
     # via typer
 six==1.17.0
@@ -281,15 +258,8 @@ tenacity==9.0.0
     #   langchain-core
 tiktoken==0.8.0
     # via langchain-openai
-tokenizers==0.21.0
-    # via transformers
 tqdm==4.67.1
-    # via
-    #   huggingface-hub
-    #   openai
-    #   transformers
-transformers==4.47.1
-    # via -r requirements.in
+    # via openai
 typer==0.15.1
     # via fastapi-cli
 types-awscrt==0.23.6
@@ -324,7 +294,6 @@ typing-extensions==4.12.2
     #   boto3-stubs
     #   fastapi
     #   google-api-python-client-stubs
-    #   huggingface-hub
     #   langchain-core
     #   openai
     #   pydantic
