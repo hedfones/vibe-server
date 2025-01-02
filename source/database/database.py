@@ -8,6 +8,7 @@ from sqlmodel import Session, SQLModel, select, text
 
 from .model import (
     Admin,
+    ApiKey,
     Assistant,
     Associate,
     AssociateProductLink,
@@ -68,6 +69,21 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = select(Business).where(Business.id == business_id)
             business = session.exec(stmt).first()
+        return business
+
+    def get_business_by_api_key(self, api_key: str) -> Business:
+        """Retrieve a Business by its ID.
+
+        Args:
+            business_id (int): The ID of the business to retrieve.
+
+        Returns:
+            Business | None: The corresponding Business object if found; otherwise, None.
+        """
+        with Session(self.engine) as session:
+            stmt = select(ApiKey).where(ApiKey.key == api_key)
+            apikey = session.exec(stmt).one()
+            business = apikey.business
         return business
 
     def get_assistant_by_business_and_type(self, business_id: int, assistant_type: str) -> Assistant:
@@ -414,3 +430,9 @@ class DatabaseService:
             conversation = session.exec(stmt).one()
             messages = conversation.messages
         return list(messages)
+
+    def validate_api_key(self, api_key: str) -> bool:
+        """Validates the provided API key against the database."""
+        with Session(self.engine) as session:
+            stmt = select(ApiKey).where(ApiKey.key == api_key)
+            return session.exec(stmt).one_or_none() is not None

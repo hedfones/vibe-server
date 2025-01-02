@@ -18,7 +18,6 @@ class ConversationInitRequest(BaseModel):
         client_timezone (str): The timezone of the client.
     """
 
-    business_id: int
     client_timezone: str
 
 
@@ -242,16 +241,6 @@ class Appointment(BaseModel):
         return cls(start=event_start_dtz, end=event_end_dtz)
 
 
-class SyncNotionRequest(BaseModel):
-    """Request model for syncing Notion content.
-
-    Attributes:
-        business_id (int): The ID of the business.
-    """
-
-    business_id: int
-
-
 class SyncNotionResponse(BaseModel):
     """Response model for syncing Notion content.
 
@@ -260,17 +249,3 @@ class SyncNotionResponse(BaseModel):
     """
 
     markdown_content: NotionPage
-
-
-class UpdateAssistantRequest(BaseModel):
-    """Request model for updating an assistant.
-
-    Attributes:
-        business_id (int): The ID of the business.
-    """
-
-    business_id: int
-
-
-class ProcessEmailsRequest(BaseModel):
-    business_id: int

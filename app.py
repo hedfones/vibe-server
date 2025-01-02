@@ -1,10 +1,11 @@
 import json
 import logging
+from functools import cache
 from pathlib import Path
 
 import structlog
 import yaml
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from openai.types.shared_params.function_definition import FunctionDefinition
@@ -12,17 +13,19 @@ from openai.types.shared_params.function_definition import FunctionDefinition
 from source import (
     Assistant,
     AssistantMessage,
-    ConversationInitRequest,
-    ConversationInitResponse,
     FileManager,
-    GetPhotoRequest,
-    Message,
     OpenAICredentials,
     SecretsManager,
+)
+from source.database import Message
+from source.model import (
+    ConversationInitRequest,
+    ConversationInitResponse,
+    GetPhotoRequest,
+    SyncNotionResponse,
     UserMessageRequest,
     UserMessageResponse,
 )
-from source.model import ProcessEmailsRequest, SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
 from source.notion import NotionPage, NotionService
 from source.utils import db, get_email_by_business_id, strip_markdown_lines
 
@@ -42,6 +45,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+
 structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG))
 log = structlog.stdlib.get_logger()
 
@@ -56,6 +60,12 @@ openai_creds = OpenAICredentials(
 )
 
 
+@cache
+def api_key_dependency(x_api_key: str = Header(...)):
+    if not db.validate_api_key(x_api_key):
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+
+
 @app.exception_handler(HTTPException)
 def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     # Log the detailed error message
@@ -68,8 +78,10 @@ def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     )
 
 
-@app.post("/initialize-conversation/", response_model=ConversationInitResponse)
-def initialize_conversation(payload: ConversationInitRequest) -> ConversationInitResponse:
+@app.post(
+    "/initialize-conversation/", response_model=ConversationInitResponse, dependencies=[Depends(api_key_dependency)]
+)
+def initialize_conversation(payload: ConversationInitRequest, x_api_key: str = Header(...)) -> ConversationInitResponse:
     """
     Initialize a new conversation for a specific business.
 
@@ -79,9 +91,7 @@ def initialize_conversation(payload: ConversationInitRequest) -> ConversationIni
 
     Raises HTTP 404 if the business with the provided ID is not found.
     """
-    business = db.get_business_by_id(payload.business_id)
-    if not business:
-        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+    business = db.get_business_by_api_key(x_api_key)
 
     # create thread
     asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
@@ -104,7 +114,7 @@ def initialize_conversation(payload: ConversationInitRequest) -> ConversationIni
     return response
 
 
-@app.post("/send-message/", response_model=UserMessageResponse)
+@app.post("/send-message/", response_model=UserMessageResponse, dependencies=[Depends(api_key_dependency)])
 def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     """
     Send a message to the assistant in an ongoing conversation.
@@ -133,7 +143,7 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     return response
 
 
-@app.post("/get-photo/")
+@app.post("/get-photo/", dependencies=[Depends(api_key_dependency)])
 def get_photo(payload: GetPhotoRequest) -> FileResponse:
     photo = db.get_photo_by_id(payload.photo_id)
     if photo is None:
@@ -142,8 +152,8 @@ def get_photo(payload: GetPhotoRequest) -> FileResponse:
     return FileResponse(file, filename=file.name)
 
 
-@app.post("/sync-notion/", response_model=SyncNotionResponse)
-def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
+@app.post("/sync-notion/", response_model=SyncNotionResponse, dependencies=[Depends(api_key_dependency)])
+def sync_notion(x_api_key: str = Header(...)) -> SyncNotionResponse:
     """
     Sync Notion content for a business.
 
@@ -153,12 +163,7 @@ def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
 
     Raises HTTP 404 if the business is not found or if the Notion page ID is not set.
     """
-    business = db.get_business_by_id(payload.business_id)
-    if not business:
-        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
-
-    if not business.notion_page_id:
-        raise HTTPException(404, f"Business {payload.business_id} does not have a Notion page ID set.")
+    business = db.get_business_by_api_key(x_api_key)
 
     try:
         # Get the content from Notion
@@ -172,19 +177,17 @@ def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
         pages: str = get_page_markdown(notion_page)
 
         # Update the business context with the markdown content
-        db.update_assistant_context(payload.business_id, pages)
+        db.update_assistant_context(business.id, pages)
 
         return SyncNotionResponse(markdown_content=notion_page)
     except Exception as e:
-        log.error("Error syncing Notion content", business_id=payload.business_id, exception=str(e))
+        log.error("Error syncing Notion content", business_id=business.id, exception=str(e))
         raise HTTPException(500, f"Error syncing Notion content: {str(e)}") from e
 
 
-@app.post("/update-assistant/")
-def update_assistant(payload: UpdateAssistantRequest) -> None:
-    business = db.get_business_by_id(payload.business_id)
-    if not business:
-        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+@app.post("/update-assistant/", dependencies=[Depends(api_key_dependency)])
+def update_assistant(x_api_key: str = Header(...)) -> None:
+    business = db.get_business_by_api_key(x_api_key)
     assistant_configs = db.get_all_assistants_by_business_id(business.id)
     for asst_config in assistant_configs:
         assistant = Assistant(openai_creds, asst_config.openai_assistant_id)
@@ -221,7 +224,7 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
         assistant.update_assistant(instructions, assistant_name, asst_config.model, function_definitions)
 
 
-@app.post("/upload-file/")
+@app.post("/upload-file/", dependencies=[Depends(api_key_dependency)])
 async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
     """
     Upload a file to the server to be stored in the S3 bucket.
@@ -241,7 +244,7 @@ async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
     return JSONResponse(content={"file_uid": file_uid, "message": "File uploaded successfully."})
 
 
-@app.get("/read-file/{file_uid}", response_class=FileResponse)
+@app.get("/read-file/{file_uid}", response_class=FileResponse, dependencies=[Depends(api_key_dependency)])
 def read_file(file_uid: str) -> FileResponse:
     """
     Retrieve a file from the server/S3 bucket.
@@ -260,8 +263,8 @@ def read_file(file_uid: str) -> FileResponse:
     return FileResponse(tmp_file_path, filename=file_uid)
 
 
-@app.post("/process-unread-emails/")
-def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
+@app.post("/process-unread-emails/", dependencies=[Depends(api_key_dependency)])
+def process_unread_emails(x_api_key: str = Header(...)) -> dict[str, int]:
     """
     Process unread emails for a business and generate AI responses.
 
@@ -272,19 +275,17 @@ def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
         Dictionary with count of processed emails
     """
     # Get business and verify it exists
-    business = db.get_business_by_id(payload.business_id)
-    if not business:
-        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+    business = db.get_business_by_api_key(x_api_key)
 
     # Initialize Gmail service using business credentials
-    mailbox = get_email_by_business_id(payload.business_id)
+    mailbox = get_email_by_business_id(business.id)
 
     # Get unread emails
     unread_emails = mailbox.list_emails(query="is:unread")
 
     # Initialize assistant for generating responses
-    asst_config = db.get_assistant_by_business_and_type(payload.business_id, "email")
-    tz = db.get_first_associate_timezone_by_business_id(payload.business_id)
+    asst_config = db.get_assistant_by_business_and_type(business.id, "email")
+    tz = db.get_first_associate_timezone_by_business_id(business.id)
     assistant = Assistant(openai_creds, asst_config.openai_assistant_id, tz)
     conversation = db.create_conversation(asst_config.id, tz, assistant.thread.thread_id)
 

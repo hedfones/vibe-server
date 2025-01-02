@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from enum import Enum
 
@@ -33,6 +34,7 @@ class Business(SQLModel, table=True):
     photos: list["Photo"] = Relationship(back_populates="business")
     assistants: list["Assistant"] = Relationship(back_populates="business")
     admins: list["Admin"] = Relationship(back_populates="business")
+    api_keys: list["ApiKey"] = Relationship(back_populates="business")
 
 
 class Admin(SQLModel, table=True):
@@ -278,3 +280,17 @@ class Schedule(SQLModel, table=True):
     def end_dtz(self) -> datetime:
         """Returns the end datetime localized to UTC."""
         return pytz.UTC.localize(self.end_datetime)
+
+
+class ApiKey(SQLModel, table=True):
+    """Represents an API key with an associated business."""
+
+    id: int = Field(default=None, primary_key=True)
+    key: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    business_id: int = Field(default=None, foreign_key="business.id")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(utc),
+        sa_column=Column(DateTime, server_default=func.now()),
+    )
+
+    business: "Business" = Relationship(back_populates="api_keys")
