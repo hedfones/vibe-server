@@ -145,8 +145,7 @@ class Assistant:
             if tool.function.name == "check_availability":
                 tool_log.debug("Processing check_availability")
                 request = CheckAvailabilityRequest.model_validate(arguments)
-                availability = get_availability(request.product_id, request.location_id, self.client_timezone)
-                body = "\n".join(map(str, availability))
+                body = get_availability(request.product_id, request.location_id, self.client_timezone)
             elif tool.function.name == "get_product_locations":
                 tool_log.debug("Processing get_product_locations")
                 request = GetProductLocationsRequest.model_validate(arguments)

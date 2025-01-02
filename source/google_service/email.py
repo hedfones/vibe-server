@@ -163,3 +163,26 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         except Exception:
             log.exception(f"An error occurred while retrieving messages in the thread with ID: {thread_id}")
             return []
+
+    def mark_thread_as_read(self, thread_id: str) -> None:
+        """
+        Marks all messages in a given thread as read.
+
+        Args:
+            thread_id (str): The ID of the thread to mark as read.
+        """
+        try:
+            # Retrieve the thread's messages
+            thread = self.service.users().threads().get(userId="me", id=thread_id).execute()
+            messages = thread.get("messages", [])
+
+            # Prepare the request body to remove the "UNREAD" label
+            for message in messages:
+                message_id = message["id"]
+                self.service.users().messages().modify(
+                    userId="me", id=message_id, body={"removeLabelIds": ["UNREAD"]}
+                ).execute()
+
+            log.info(f"All messages in thread {thread_id} marked as read.")
+        except Exception:
+            log.exception(f"An error occurred while marking thread {thread_id} as read.")

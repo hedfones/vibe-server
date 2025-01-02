@@ -67,12 +67,12 @@ insert into
 values
     (
         1,
-        '946acd9197dc8a64b9b49e0f6868995c9cb91a518c0e11d4f93962954cdfdc94@group.calendar.google.com',
+        '4c0cde8d854b7daf80d06b8617a72fb15abfbbfe5ba237c46647704f1d3b8b94@group.calendar.google.com',
         'America/New_York'
     ),
     (
         1,
-        'ae55565a4ed21e201a9bcd26ac649ae9f5448caa216fa437aaaa8b58e8168bb8@group.calendar.google.com',
+        '6161541fed1f3685dc370f34b4de3cf87a5e31f3c1837608056f9c57d9a812fd@group.calendar.google.com',
         'America/New_York'
     );
 

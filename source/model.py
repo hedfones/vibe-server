@@ -96,6 +96,14 @@ class AvailabilityWindow(BaseModel):
         self.start_time = self.start_time.astimezone(tz)
         self.end_time = self.end_time.astimezone(tz)
 
+    def as_lite_dict(self) -> dict[str, str | int]:
+        assert self.associate_id is not None, "Associate ID must be set"
+        return {
+            "start_time": self.start_time.isoformat(),
+            "end_time": self.end_time.isoformat(),
+            "associate_id": self.associate_id,
+        }
+
 
 class CheckAvailabilityRequest(BaseModel):
     """Request model for checking availability.

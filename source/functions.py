@@ -1,17 +1,19 @@
+import json
+
 import pytz
 import structlog
 from fastapi import HTTPException
 
 from .database import Product
 from .google_service import Event
-from .model import AvailabilityWindow, SetAppointmentsRequest
+from .model import SetAppointmentsRequest
 from .scheduler import Scheduler
 from .utils import db, get_calendar_by_business_id
 
 log = structlog.stdlib.get_logger()
 
 
-def get_availability(product_id: int, location_id: int, timezone: str) -> list[AvailabilityWindow]:
+def get_availability(product_id: int, location_id: int, timezone: str) -> str:
     """Retrieve availability windows for a product at a specific location.
 
     Args:
@@ -50,8 +52,11 @@ def get_availability(product_id: int, location_id: int, timezone: str) -> list[A
     for availability in availabilities:
         availability.localize(timezone)
 
-    logger.debug("Availabilities fetched successfully.", results=availabilities)
-    return availabilities
+    availability_dict_list = [av.as_lite_dict() for av in availabilities]
+    availability_string = json.dumps(availability_dict_list)
+
+    logger.debug("Availabilities fetched successfully.", results=availability_string)
+    return availability_string
 
 
 def get_product_locations(product_id: int) -> str:
@@ -73,7 +78,8 @@ def get_product_locations(product_id: int) -> str:
         logger.error("Locations not found.")
         raise HTTPException(404, f"Unable to find locations associated with product `{product_id}`.")
 
-    location_string = "\n".join(map(str, locations))
+    location_dict_list = [loc.as_lite_dict() for loc in locations]
+    location_string = json.dumps(location_dict_list)
 
     logger.debug("Locations fetched successfully.", results=location_string)
     return location_string
@@ -90,7 +96,8 @@ def get_product_list(assistant_id: str) -> str:
     """
     log.debug("Fetching product list for assistant ID.", assistant_id=assistant_id)
     products = db.get_products_by_assistant_id(assistant_id)
-    product_string = "\n".join(map(str, products))
+    product_dict_list = [product.as_lite_dict() for product in products]
+    product_string = json.dumps(product_dict_list)
 
     log.debug("Product list fetched successfully.", results=product_string)
     return product_string

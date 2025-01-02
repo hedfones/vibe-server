@@ -138,6 +138,9 @@ class Location(SQLModel, table=True):
         """Returns a string representation of the Location."""
         return f"Location:\n\tID: {self.id}\n\tDescription: {self.description}"
 
+    def as_lite_dict(self) -> dict[str, str | int]:
+        return {"location_id": self.id, "description": self.description}
+
 
 class Product(SQLModel, table=True):
     """Represents a product offered by a business."""
@@ -158,6 +161,14 @@ class Product(SQLModel, table=True):
     def __str__(self) -> str:
         """Returns a string representation of the Product."""
         return f"Product:\n\tID: {self.id}\n\tDescription: {self.description}"
+
+    def as_lite_dict(self) -> dict[str, str | int | float]:
+        return {
+            "product_id": self.id,
+            "description": self.description,
+            "duration_minutes": self.duration_minutes,
+            "booking_fee": self.booking_fee,
+        }
 
 
 class Photo(SQLModel, table=True):

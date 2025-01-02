@@ -320,6 +320,7 @@ def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
             thread_id=thread_id,
             is_html=True,
         )
+        mailbox.mark_thread_as_read(thread_id)
         processed_count += 1
 
     return {"processed_emails": processed_count}
