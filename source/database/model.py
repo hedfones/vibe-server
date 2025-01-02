@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 
 import pytz
 from sqlalchemy import Column, DateTime, Sequence, func
@@ -9,34 +10,47 @@ utc = pytz.UTC
 
 
 class Business(SQLModel, table=True):
+    """Represents a business entity with various attributes and relationships."""
+
     id: int = Field(default=None, primary_key=True)
     name: str
     calendar_service: str
     calendar_service_id: str
+    email_service: str
+    email_service_id: str
     notion_page_id: str
     created_at: datetime = Field(
+        # Sets the default creation time to now in UTC if not provided.
         default_factory=lambda: datetime.now(utc),
+        # Sets the server's default column value for the creation time.
         sa_column=Column(DateTime, server_default=func.now()),
     )
 
-    conversations: list["Conversation"] = Relationship(back_populates="business")
+    # Define relationships to other entities.
     products: list["Product"] = Relationship(back_populates="business")
     associates: list["Associate"] = Relationship(back_populates="business")
     locations: list["Location"] = Relationship(back_populates="business")
     photos: list["Photo"] = Relationship(back_populates="business")
-    assistant: "Assistant" = Relationship(
-        back_populates="business", sa_relationship_kwargs={"lazy": "joined", "uselist": False}
-    )
+    assistants: list["Assistant"] = Relationship(back_populates="business")
+
+
+class AssistantType(str, Enum):
+    email = "email"
+    chat = "chat"
 
 
 class Assistant(SQLModel, table=True):
+    """Represents an assistant that belongs to a business."""
+
     id: int = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     openai_assistant_id: str
-    start_message: str
+    start_message: str | None = Field(default=None)  # not used on all assistant types
     instructions: str
     context: str
     model: str
+    type: AssistantType
+    # Boolean flags for various functions the assistant can use.
     uses_function_check_availability: bool = False
     uses_function_get_product_list: bool = False
     uses_function_get_product_locations: bool = False
@@ -47,12 +61,15 @@ class Assistant(SQLModel, table=True):
         sa_column=Column(DateTime, server_default=func.now()),
     )
 
-    business: "Business" = Relationship(back_populates="assistant")
+    business: "Business" = Relationship(back_populates="assistants")
+    conversations: list["Conversation"] = Relationship(back_populates="assistant")
 
 
 class Conversation(SQLModel, table=True):
+    """Represents a conversation related to a business."""
+
     id: int = Field(default=None, primary_key=True)
-    business_id: int = Field(default=None, foreign_key="business.id")
+    assistant_id: int = Field(default=None, foreign_key="assistant.id")
     thread_id: str
     client_timezone: str
     created_at: datetime = Field(
@@ -60,7 +77,7 @@ class Conversation(SQLModel, table=True):
         sa_column=Column(DateTime, server_default=func.now()),
     )
 
-    business: "Business" = Relationship(back_populates="conversations")
+    assistant: "Assistant" = Relationship(back_populates="conversations")
     messages: list["Message"] = Relationship(back_populates="conversation")
 
 
@@ -68,6 +85,8 @@ message_sequence = Sequence("message_sequence", start=1, increment=1)
 
 
 class Message(SQLModel, table=True):
+    """Represents a message within a conversation."""
+
     id: int = Field(
         default=None,
         primary_key=True,
@@ -85,6 +104,8 @@ class Message(SQLModel, table=True):
 
 
 class Associate(SQLModel, table=True):
+    """Represents an associate linked to a business."""
+
     id: int = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     calendar_id: str
@@ -99,6 +120,8 @@ class Associate(SQLModel, table=True):
 
 
 class Location(SQLModel, table=True):
+    """Represents a location related to a business."""
+
     id: int = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     description: str
@@ -112,10 +135,16 @@ class Location(SQLModel, table=True):
 
     @override
     def __str__(self) -> str:
+        """Returns a string representation of the Location."""
         return f"Location:\n\tID: {self.id}\n\tDescription: {self.description}"
+
+    def as_lite_dict(self) -> dict[str, str | int]:
+        return {"location_id": self.id, "description": self.description}
 
 
 class Product(SQLModel, table=True):
+    """Represents a product offered by a business."""
+
     id: int = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
     duration_minutes: int
@@ -130,10 +159,21 @@ class Product(SQLModel, table=True):
 
     @override
     def __str__(self) -> str:
+        """Returns a string representation of the Product."""
         return f"Product:\n\tID: {self.id}\n\tDescription: {self.description}"
+
+    def as_lite_dict(self) -> dict[str, str | int | float]:
+        return {
+            "product_id": self.id,
+            "description": self.description,
+            "duration_minutes": self.duration_minutes,
+            "booking_fee": self.booking_fee,
+        }
 
 
 class Photo(SQLModel, table=True):
+    """Represents a photo related to a business."""
+
     id: int | None = Field(default=None, primary_key=True)
     file_uid: str
     description: str
@@ -144,11 +184,13 @@ class Photo(SQLModel, table=True):
 
     @override
     def __str__(self) -> str:
+        """Returns a string representation of the Photo."""
         return f"Photo:\n\tID: {self.id}\n\tDescription: {self.description}"
 
 
 class PhotoProductLink(SQLModel, table=True):
     """
+    Represents a link between photos and products.
     A product can have multiple photos associated with it,
     and the same photo can be linked to multiple products.
     """
@@ -162,6 +204,7 @@ class PhotoProductLink(SQLModel, table=True):
 
 class LocationProductLink(SQLModel, table=True):
     """
+    Represents a link between locations and products.
     A location can have multiple products, and
     the same product can be found at multiple locations.
     """
@@ -178,6 +221,7 @@ class LocationProductLink(SQLModel, table=True):
 
 class AssociateProductLink(SQLModel, table=True):
     """
+    Represents a link between associates and products.
     An associate can provide multiple products, and
     the same product can be offered by multiple locations.
     """
@@ -193,6 +237,8 @@ class AssociateProductLink(SQLModel, table=True):
 
 
 class Schedule(SQLModel, table=True):
+    """Represents a schedule for an associate at a location."""
+
     id: int = Field(default=None, primary_key=True)
     associate_id: int = Field(default=None, foreign_key="associate.id")
     location_id: int = Field(default=None, foreign_key="location.id")
@@ -208,8 +254,10 @@ class Schedule(SQLModel, table=True):
 
     @property
     def start_dtz(self) -> datetime:
+        """Returns the start datetime localized to UTC."""
         return pytz.UTC.localize(self.start_datetime)
 
     @property
     def end_dtz(self) -> datetime:
+        """Returns the end datetime localized to UTC."""
         return pytz.UTC.localize(self.end_datetime)

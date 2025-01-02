@@ -1,6 +1,8 @@
 import json
+import logging
 from pathlib import Path
 
+import structlog
 import yaml
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,13 +21,14 @@ from source import (
     SecretsManager,
     UserMessageRequest,
     UserMessageResponse,
-    db,
-    logger,
 )
-from source.model import SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
+from source.model import ProcessEmailsRequest, SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
 from source.notion import NotionPage, NotionService
+from source.utils import db, get_email_by_business_id, strip_markdown_lines
 
 app = FastAPI()
+
+
 # Add CORSMiddleware to allow requests from the client
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +41,9 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allows all headers
 )
+
+structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG))
+log = structlog.stdlib.get_logger()
 
 secrets = SecretsManager()
 file_manager = FileManager("booking-agent-dev")
@@ -53,7 +59,7 @@ openai_creds = OpenAICredentials(
 @app.exception_handler(HTTPException)
 def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     # Log the detailed error message
-    logger.error(f"HTTP Exception: {exc.detail} (status code: {exc.status_code})")
+    log.error(f"HTTP Exception (status code: {exc.status_code})", status_code=exc.status_code, description=exc.detail)
 
     # Return the original error response
     return JSONResponse(
@@ -78,15 +84,18 @@ def initialize_conversation(payload: ConversationInitRequest) -> ConversationIni
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
 
     # create thread
-    assistant = Assistant(openai_creds, business.assistant.openai_assistant_id, payload.client_timezone)
-    conversation = db.create_conversation(business, payload.client_timezone, assistant.thread.thread_id)
-    # assistant.add_message({"role": "system", "content": business.context})
-    assistant.add_message({"role": "assistant", "content": business.assistant.start_message})
+    asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
+    assistant = Assistant(openai_creds, asst_config.openai_assistant_id, payload.client_timezone)
+    conversation = db.create_conversation(asst_config.id, payload.client_timezone, assistant.thread.thread_id)
+    assert asst_config.start_message is not None
+    assistant.add_message({"role": "assistant", "content": asst_config.start_message})
 
+    asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
+    assert asst_config.start_message is not None
     assistant_first_message = Message(
         conversation_id=conversation.id,
         role="assistant",
-        content=business.assistant.start_message,
+        content=asst_config.start_message,
     )
     db.insert_messages([assistant_first_message])
 
@@ -107,17 +116,12 @@ def send_message(payload: UserMessageRequest) -> UserMessageResponse:
     Raises HTTP 404 if the conversation with the provided ID is not found.
     """
     new_messages: list[Message] = []
-    conversation = db.get_conversation_by_id(payload.conversation_id)
-    if not conversation:
-        raise HTTPException(404, f"Conversation with ID {payload.conversation_id} not found.")
-
-    business = db.get_business_by_id(conversation.business_id)
-    if not business:
-        raise HTTPException(404, f"Business with ID {conversation.business_id} not found.")
+    conversation, business = db.get_conversation_and_business_by_id(payload.conversation_id)
     new_messages.append(Message(conversation_id=conversation.id, role="user", content=payload.content))
 
+    asst_config = db.get_assistant_by_business_and_type(business.id, "chat")
     assistant = Assistant(
-        openai_creds, business.assistant.openai_assistant_id, conversation.client_timezone, conversation.thread_id
+        openai_creds, asst_config.openai_assistant_id, conversation.client_timezone, conversation.thread_id
     )
     message: AssistantMessage = {"role": "user", "content": payload.content}
     assistant.add_message(message)
@@ -173,7 +177,7 @@ def sync_notion(payload: SyncNotionRequest) -> SyncNotionResponse:
 
         return SyncNotionResponse(markdown_content=notion_page)
     except Exception as e:
-        logger.error(f"Error syncing Notion content for business {payload.business_id}: {str(e)}")
+        log.error("Error syncing Notion content", business_id=payload.business_id, exception=str(e))
         raise HTTPException(500, f"Error syncing Notion content: {str(e)}") from e
 
 
@@ -182,38 +186,40 @@ def update_assistant(payload: UpdateAssistantRequest) -> None:
     business = db.get_business_by_id(payload.business_id)
     if not business:
         raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
-    assistant = Assistant(openai_creds, business.assistant.openai_assistant_id)
-    instructions = f"{business.assistant.instructions}\n\n{'-' * 80}\n\n{business.assistant.context}"
-    assistant_name = f"Vibe - {business.name}"
+    assistant_configs = db.get_all_assistants_by_business_id(business.id)
+    for asst_config in assistant_configs:
+        assistant = Assistant(openai_creds, asst_config.openai_assistant_id)
+        instructions = f"{asst_config.instructions}\n\n{'-' * 80}\n\n{asst_config.context}"
+        assistant_name = f"Vibe - {asst_config.type} - {business.name}"
 
-    assistant_fields: dict[str, bool | str | int] = business.assistant.model_dump()
+        assistant_fields: dict[str, bool | str | int] = asst_config.model_dump()
 
-    function_dir = Path("resources/functions")
-    try:
-        with open(function_dir / "function_mapping.yaml", "r") as f:
-            function_fields: dict[str, str] = yaml.safe_load(f)
-    except FileNotFoundError as e:
-        raise HTTPException(500, "Function mapping file not found.") from e
-    except yaml.YAMLError as e:
-        raise HTTPException(500, f"Error parsing function mapping file: {e}") from e
-
-    function_definitions: list[FunctionDefinition] = []
-    for key, filename in function_fields.items():
-        do_use_function = assistant_fields[key]
-        if not do_use_function:
-            continue
-        filepath = function_dir / filename
+        function_dir = Path("resources/functions")
         try:
-            with filepath.open("r") as f:
-                function_definition: FunctionDefinition = json.load(f)
+            with open(function_dir / "function_mapping.yaml", "r") as f:
+                function_fields: dict[str, str] = yaml.safe_load(f)
         except FileNotFoundError as e:
-            raise HTTPException(500, f"Function definition file {filename} not found.") from e
-        except json.JSONDecodeError as e:
-            raise HTTPException(500, f"Error parsing function definition file {filename}: {e}") from e
+            raise HTTPException(500, "Function mapping file not found.") from e
+        except yaml.YAMLError as e:
+            raise HTTPException(500, f"Error parsing function mapping file: {e}") from e
 
-        function_definitions.append(function_definition)
+        function_definitions: list[FunctionDefinition] = []
+        for key, filename in function_fields.items():
+            do_use_function = assistant_fields[key]
+            if not do_use_function:
+                continue
+            filepath = function_dir / filename
+            try:
+                with filepath.open("r") as f:
+                    function_definition: FunctionDefinition = json.load(f)
+            except FileNotFoundError as e:
+                raise HTTPException(500, f"Function definition file {filename} not found.") from e
+            except json.JSONDecodeError as e:
+                raise HTTPException(500, f"Error parsing function definition file {filename}: {e}") from e
 
-    assistant.update_assistant(instructions, assistant_name, business.assistant.model, function_definitions)
+            function_definitions.append(function_definition)
+
+        assistant.update_assistant(instructions, assistant_name, asst_config.model, function_definitions)
 
 
 @app.post("/upload-file/")
@@ -227,6 +233,7 @@ async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
     """
     file_contents = await file.read()
     file_uid = file.filename  # or any unique identifier scheme
+    assert file_uid is not None, "File has no filename"
     upload_success = file_manager.upload_file(file_uid, file_contents)
 
     if not upload_success:
@@ -252,3 +259,68 @@ def read_file(file_uid: str) -> FileResponse:
     tmp_file_path = Path("/tmp") / file_uid
     _ = tmp_file_path.write_bytes(file_bytes)
     return FileResponse(tmp_file_path, filename=file_uid)
+
+
+@app.post("/process-unread-emails/")
+def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
+    """
+    Process unread emails for a business and generate AI responses.
+
+    Args:
+        payload: Request containing business_id
+
+    Returns:
+        Dictionary with count of processed emails
+    """
+    # Get business and verify it exists
+    business = db.get_business_by_id(payload.business_id)
+    if not business:
+        raise HTTPException(404, f"Business with ID {payload.business_id} not found.")
+
+    # Initialize Gmail service using business credentials
+    mailbox = get_email_by_business_id(payload.business_id)
+
+    # Get unread emails
+    unread_emails = mailbox.list_emails(query="is:unread")
+
+    # Initialize assistant for generating responses
+    asst_config = db.get_assistant_by_business_and_type(payload.business_id, "email")
+    tz = db.get_first_associate_timezone_by_business_id(payload.business_id)
+    assistant = Assistant(openai_creds, asst_config.openai_assistant_id, tz)
+    conversation = db.create_conversation(asst_config.id, tz, assistant.thread.thread_id)
+
+    processed_count = 0
+    thread_ids = set(m["threadId"] for m in unread_emails)
+    for thread_id in thread_ids:
+        # Get full email content
+        thread = mailbox.get_messages_in_thread(thread_id)
+        if not thread:
+            continue
+
+        # Generate AI response using assistant
+        messages: list[Message] = []
+        for email in thread:
+            message: AssistantMessage = {"role": "user", "content": json.dumps(email)}
+            assistant.add_message(message)
+            messages.append(Message(**message, conversation_id=conversation.id))
+        response = assistant.retrieve_response()
+        messages.append(Message(conversation_id=conversation.id, role="assistant", content=response))
+        db.insert_messages(messages)
+
+        message_id = thread[-1]["message_id"]
+        response_payload: dict[str, str] = json.loads(strip_markdown_lines(response))
+        response_payload["to"] = "kalebjs@proton.me"
+
+        # Extract email address from headers
+        mailbox.send_email(
+            to=response_payload["to"],
+            subject=response_payload["subject"],
+            body=response_payload["body"],
+            message_id=message_id,
+            thread_id=thread_id,
+            is_html=True,
+        )
+        mailbox.mark_thread_as_read(thread_id)
+        processed_count += 1
+
+    return {"processed_emails": processed_count}

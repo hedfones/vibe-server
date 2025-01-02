@@ -1,4 +1,7 @@
-from typing import Literal, NotRequired, TypedDict
+from typing import Callable, Literal, NotRequired, TypedDict
+
+JsonableType = str | int | float | bool | None | dict[str, "JsonableType"] | list["JsonableType"]
+SecretUpdateCallbackFunctionType = Callable[[str, JsonableType], None]
 
 
 class Timestamp(TypedDict):
@@ -29,3 +32,16 @@ class Event(TypedDict):
     location: str
     attendees: NotRequired[list[Attendee]]
     reminders: Reminder
+
+
+class EmailListItem(TypedDict):
+    id: str
+    threadId: str
+
+
+class EmailMessage(TypedDict):
+    subject: str
+    body: str
+    sender: str
+    date_sent: str
+    message_id: str

@@ -1,19 +1,27 @@
 pydantic
-pytz
 fastapi[standard]
-pyyaml
-openai
-sqlmodel
 uvicorn
+
+openai
+
+pytz
+sqlmodel
 psycopg2-binary
+pyyaml
+
 python-dateutil
+structlog
+rich
 
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+google-api-python-client-stubs
 
 notion-client
 
 boto3
-types-boto3[essential]
+types-boto3[essential, secretsmanager]
 boto3-stubs
+
+Markdown

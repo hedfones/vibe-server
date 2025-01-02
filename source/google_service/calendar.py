@@ -1,49 +1,13 @@
-import base64
-import json
 from datetime import datetime
-from pathlib import Path
 
-from google.oauth2 import service_account
-from googleapiclient.discovery import Resource, build
-
+from .auth import GoogleServiceBase
 from .model import Event
 
+
 # Scopes required for the Calendar API (read/write)
-SCOPES = ["https://www.googleapis.com/auth/calendar"]
-
-
-class GoogleCalendar:
-    def __init__(
-        self,
-        service_account_path: Path | str | None = None,
-        service_account_base64: str | None = None,
-    ) -> None:
-        if service_account_path:
-            service_account_path = Path(service_account_path)
-            with service_account_path.open("r") as f:
-                creds_info = json.load(f)
-        elif service_account_base64:
-            decoded = base64.b64decode(service_account_base64)
-            creds_info = json.loads(decoded)
-        else:
-            raise ValueError("Either 'service_account_path' or 'service_account_base64' must be provided.")
-
-        self.service: Resource = self.authenticate(creds_info)
-
-    def authenticate(self, creds_info: dict) -> Resource:
-        """
-        Authenticates using a service account JSON key file and returns a calendar service object.
-
-        Steps to create a service account:
-            1. Go to Google Cloud Console and create a service account under your project.
-            2. Download the JSON key file and save it to your project (e.g., `service_account.json`).
-            3. Share the target calendar with the service account's email address, granting appropriate permissions.
-
-        Returns:
-            Resource: The authenticated Google Calendar API service object.
-        """
-        creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-        return build("calendar", "v3", credentials=creds)
+class GoogleCalendar(GoogleServiceBase["GoogleCalendar"]):
+    api_name: str = "calendar"
+    api_version: str = "v3"
 
     def create_calendar(self, calendar_name: str) -> str:
         """
@@ -55,7 +19,7 @@ class GoogleCalendar:
         Returns:
             str: The ID of the newly created calendar.
         """
-        calendar: dict[str, str] = {"summary": calendar_name, "timeZone": "UTC"}
+        calendar = {"summary": calendar_name, "timeZone": "UTC"}
         created_calendar = self.service.calendars().insert(body=calendar).execute()
         print(f"Calendar created: {created_calendar['id']}")
         return created_calendar["id"]
@@ -149,7 +113,6 @@ class GoogleCalendar:
             print("No calendars found.")
             return []
 
-        # Print and return the list of calendar IDs
         print("Available calendars:")
         calendar_info: list[dict[str, str]] = []
         for calendar in calendars:
@@ -188,7 +151,7 @@ class GoogleCalendar:
             for event in events:
                 try:
                     self.service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
-                    print(f"Deleted event: {event['summary']} | ID: {event['id']}")
+                    print(f"Deleted event: {event.get('summary', 'No Title')} | ID: {event['id']}")
                 except Exception as e:
                     print(f"An error occurred while deleting event {event['id']}: {e}")
 

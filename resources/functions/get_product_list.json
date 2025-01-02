@@ -1,11 +1,11 @@
 {
-  "name": "get_product_list",
-  "description": "This function accepts no arguments and will return a list of product/service IDs and descriptions",
-  "strict": true,
-  "parameters": {
-    "type": "object",
-    "properties": {},
-    "additionalProperties": false,
-    "required": []
-  }
+    "name": "get_product_list",
+    "description": "This function accepts no arguments and will return a list of product IDs and descriptions",
+    "strict": true,
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "required": []
+    }
 }
