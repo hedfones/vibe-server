@@ -50,7 +50,7 @@ def get_availability(product_id: int, location_id: int, timezone: str) -> list[A
     for availability in availabilities:
         availability.localize(timezone)
 
-    logger.debug("Availabilities fetched successfully.")
+    logger.debug("Availabilities fetched successfully.", results=availabilities)
     return availabilities
 
 
@@ -75,7 +75,7 @@ def get_product_locations(product_id: int) -> str:
 
     location_string = "\n".join(map(str, locations))
 
-    logger.debug("Locations fetched successfully.")
+    logger.debug("Locations fetched successfully.", results=location_string)
     return location_string
 
 
@@ -92,7 +92,7 @@ def get_product_list(assistant_id: str) -> str:
     products = db.get_products_by_assistant_id(assistant_id)
     product_string = "\n".join(map(str, products))
 
-    log.debug("Product list fetched successfully.")
+    log.debug("Product list fetched successfully.", results=product_string)
     return product_string
 
 

@@ -24,7 +24,7 @@ from source import (
 )
 from source.model import ProcessEmailsRequest, SyncNotionRequest, SyncNotionResponse, UpdateAssistantRequest
 from source.notion import NotionPage, NotionService
-from source.utils import db, get_email_by_business_id
+from source.utils import db, get_email_by_business_id, strip_markdown_lines
 
 app = FastAPI()
 
@@ -300,29 +300,26 @@ def process_unread_emails(payload: ProcessEmailsRequest) -> dict[str, int]:
         # Generate AI response using assistant
         messages: list[Message] = []
         for email in thread:
-            message: AssistantMessage = {
-                "role": "user",
-                "content": f"Sender: {email['sender']}\n\nSubject: {email['subject']}\n\nBody: {email['body']}",
-            }
+            message: AssistantMessage = {"role": "user", "content": json.dumps(email)}
             assistant.add_message(message)
             messages.append(Message(**message, conversation_id=conversation.id))
         response = assistant.retrieve_response()
         messages.append(Message(conversation_id=conversation.id, role="assistant", content=response))
         db.insert_messages(messages)
 
-        last_message = thread[-1]
+        message_id = thread[-1]["message_id"]
+        response_payload: dict[str, str] = json.loads(strip_markdown_lines(response))
+        response_payload["to"] = "kalebjs@proton.me"
 
-        # Send response
-        if response:
-            # Extract email address from headers
-            last_message["sender"] = "kalebjs@proton.me"
-            mailbox.send_email(
-                to=last_message.get("sender", ""),
-                subject=f"Re: {last_message['subject']}",
-                body=response,
-                thread_id=thread_id,
-            )
-            processed_count += 1
-        break
+        # Extract email address from headers
+        mailbox.send_email(
+            to=response_payload["to"],
+            subject=response_payload["subject"],
+            body=response_payload["body"],
+            message_id=message_id,
+            thread_id=thread_id,
+            is_html=True,
+        )
+        processed_count += 1
 
     return {"processed_emails": processed_count}

@@ -15,7 +15,15 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
     api_name: str = "gmail"
     api_version: str = "v1"
 
-    def send_email(self, to: str, subject: str, body: str, is_html: bool = False, thread_id: str = None) -> None:
+    def send_email(
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        is_html: bool = False,
+        message_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> None:
         """
         Sends an email via Gmail.
 
@@ -33,9 +41,12 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         message = MIMEText(body, "html")
         message["to"] = to
         message["subject"] = subject
-        if thread_id:
-            message["In-Reply-To"] = thread_id
-            message["References"] = thread_id
+        if message_id:
+            message["In-Reply-To"] = message_id  # Send the message ID of the original email
+            message["References"] = message_id  # Update this to include previous Message-IDs if necessary
+        else:
+            # You might need to send 'References' with an empty string or a unique ID if no threading is used.
+            message["References"] = ""
 
         raw_message = urlsafe_b64encode(message.as_bytes()).decode()
 
@@ -96,9 +107,16 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
             sender = next((header["value"] for header in headers if header["name"] == "From"), None)
             date_sent = next((header["value"] for header in headers if header["name"] == "Date"), None)
+            message_id = next((header["value"] for header in headers if header["name"] == "Message-ID"), None)
 
-            # Return the email details
-            return {"sender": sender, "subject": subject, "body": decoded_body, "date_sent": date_sent}
+            # Return the email details including Message-ID
+            return {
+                "sender": sender,
+                "subject": subject,
+                "body": decoded_body,
+                "date_sent": date_sent,
+                "message_id": message_id,
+            }
         else:
             log.warning(f"No parts found in message with ID: {message.get('id')}")
             return None

@@ -44,3 +44,4 @@ class EmailMessage(TypedDict):
     body: str
     sender: str
     date_sent: str
+    message_id: str

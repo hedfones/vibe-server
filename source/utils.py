@@ -80,3 +80,19 @@ def get_email_by_business_id(business_id: int) -> GoogleGmail:
     else:
         logger.error("Unrecognized email service.", service=business.email_service)
         raise HTTPException(400, detail=f"Unrecognized email service `{business.email_service}`.")
+
+
+def strip_markdown_lines(text: str):
+    # Split the text into lines
+    lines = text.splitlines()
+
+    # Check if the first and last lines are markdown indicators
+    if lines[0].strip() == "```json":
+        lines = lines[1:]
+    if lines[-1].strip() == "```":
+        lines = lines[:-1]
+
+    # Join the remaining lines
+    stripped_text = "\n".join(lines)
+
+    return stripped_text
