@@ -1,12 +1,14 @@
 import json
 import logging
 import uuid
+from contextlib import asynccontextmanager
 from functools import cache
 from pathlib import Path
 from typing import Literal
 
 import structlog
 import yaml
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -14,6 +16,7 @@ from openai.types.shared_params.function_definition import FunctionDefinition
 
 from source import Assistant, AssistantMessage, FileManager, OpenAICredentials, SecretsManager
 from source.database import Message, Photo
+from source.database.model import Business
 from source.generative_ai_service import describe_image
 from source.model import (
     ConversationInitRequest,
@@ -26,7 +29,27 @@ from source.model import (
 from source.notion import NotionPage, NotionService
 from source.utils import db, get_email_by_business_id, strip_markdown_lines
 
-app = FastAPI()
+scheduler = AsyncIOScheduler()
+
+
+async def scheduled_task():
+    # Replace with your function call
+    business_ids: set[int] = {1}
+    for id in business_ids:
+        business = db.get_business_by_id(id)
+        drafts_created_count = _process_unread_emails(business, action="draft")
+        return {"drafts_created": drafts_created_count}
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _ = scheduler.add_job(scheduled_task, "interval", minutes=1)  # Adjust the interval as needed
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 # Add CORSMiddleware to allow requests from the client
@@ -41,7 +64,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allows all headers
 )
-
 
 structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG))
 log = structlog.stdlib.get_logger()
@@ -271,7 +293,8 @@ def process_unread_emails(x_api_key: str = Header(...)) -> dict[str, int]:
     Returns:
         Dictionary with count of processed emails.
     """
-    processed_count = _process_unread_emails(x_api_key, action="send")
+    business = db.get_business_by_api_key(x_api_key)
+    processed_count = _process_unread_emails(business, action="send")
     return {"processed_emails": processed_count}
 
 
@@ -286,11 +309,12 @@ def process_unread_emails_draft(x_api_key: str = Header(...)) -> dict[str, int]:
     Returns:
         Dictionary with count of created drafts.
     """
-    drafts_created_count = _process_unread_emails(x_api_key, action="draft")
+    business = db.get_business_by_api_key(x_api_key)
+    drafts_created_count = _process_unread_emails(business, action="draft")
     return {"drafts_created": drafts_created_count}
 
 
-def _process_unread_emails(x_api_key: str, action: Literal["draft", "send"]) -> int:
+def _process_unread_emails(business: Business, action: Literal["draft", "send"]) -> int:
     """
     Helper function to process unread emails and perform the specified action.
 
@@ -301,9 +325,6 @@ def _process_unread_emails(x_api_key: str, action: Literal["draft", "send"]) -> 
     Returns:
         Count of processed emails.
     """
-    # Get business and verify it exists
-    business = db.get_business_by_api_key(x_api_key)
-
     # Initialize Gmail service using business credentials
     mailbox = get_email_by_business_id(business.id)
 

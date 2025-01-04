@@ -14,17 +14,19 @@ anyio==4.7.0
     #   openai
     #   starlette
     #   watchfiles
+apscheduler==3.11.0
+    # via -r requirements.in
 attrs==24.3.0
     # via aiohttp
-boto3==1.35.90
+boto3==1.35.92
     # via -r requirements.in
-boto3-stubs==1.35.90
+boto3-stubs==1.35.92
     # via -r requirements.in
-botocore==1.35.90
+botocore==1.35.92
     # via
     #   boto3
     #   s3transfer
-botocore-stubs==1.35.90
+botocore-stubs==1.35.92
     # via
     #   boto3-stubs
     #   types-boto3
@@ -58,7 +60,7 @@ frozenlist==1.5.0
     #   aiosignal
 google-api-core==2.24.0
     # via google-api-python-client
-google-api-python-client==2.156.0
+google-api-python-client==2.157.0
     # via
     #   -r requirements.in
     #   google-api-python-client-stubs
@@ -115,9 +117,9 @@ jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
     # via jsonpatch
-langchain==0.3.13
+langchain==0.3.14
     # via -r requirements.in
-langchain-core==0.3.28
+langchain-core==0.3.29
     # via
     #   -r requirements.in
     #   langchain
@@ -127,7 +129,7 @@ langchain-openai==0.2.14
     # via -r requirements.in
 langchain-text-splitters==0.3.4
     # via langchain
-langsmith==0.2.7
+langsmith==0.2.10
     # via
     #   langchain
     #   langchain-core
@@ -149,7 +151,7 @@ numpy==1.26.4
     # via langchain
 oauthlib==3.2.2
     # via requests-oauthlib
-openai==1.58.1
+openai==1.59.3
     # via
     #   -r requirements.in
     #   langchain-openai
@@ -264,7 +266,7 @@ typer==0.15.1
     # via fastapi-cli
 types-awscrt==0.23.6
     # via botocore-stubs
-types-boto3==1.35.90
+types-boto3==1.35.92
     # via -r requirements.in
 types-boto3-cloudformation==1.35.71
     # via types-boto3
@@ -276,11 +278,11 @@ types-boto3-lambda==1.35.71
     # via types-boto3
 types-boto3-rds==1.35.89
     # via types-boto3
-types-boto3-s3==1.35.81
+types-boto3-s3==1.35.92
     # via types-boto3
 types-boto3-secretsmanager==1.35.71
     # via types-boto3
-types-boto3-sqs==1.35.71
+types-boto3-sqs==1.35.91
     # via types-boto3
 types-httplib2==0.22.0.20241221
     # via google-api-python-client-stubs
@@ -310,6 +312,8 @@ typing-extensions==4.12.2
     #   types-boto3-s3
     #   types-boto3-secretsmanager
     #   types-boto3-sqs
+tzlocal==5.2
+    # via apscheduler
 uritemplate==4.1.1
     # via google-api-python-client
 urllib3==2.3.0

@@ -1,6 +1,7 @@
 pydantic
 fastapi[standard]
 uvicorn
+apscheduler
 
 openai
 
