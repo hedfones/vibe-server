@@ -305,7 +305,6 @@ def process_unread_emails(x_api_key: str = Header(...)) -> dict[str, int]:
 
         message_id = thread[-1]["message_id"]
         response_payload: dict[str, str] = json.loads(strip_markdown_lines(response))
-        response_payload["to"] = "kalebjs@proton.me"
 
         # Extract email address from headers
         mailbox.send_email(
@@ -320,6 +319,67 @@ def process_unread_emails(x_api_key: str = Header(...)) -> dict[str, int]:
         processed_count += 1
 
     return {"processed_emails": processed_count}
+
+
+@app.post("/process-unread-emails-draft/", dependencies=[Depends(api_key_dependency)])
+def process_unread_emails_draft(x_api_key: str = Header(...)) -> dict[str, int]:
+    """
+    Process unread emails for a business and generate AI responses as drafts.
+
+    Args:
+        x_api_key: API key for business identification.
+
+    Returns:
+        Dictionary with count of created drafts.
+    """
+    # Get business and verify it exists
+    business = db.get_business_by_api_key(x_api_key)
+
+    # Initialize Gmail service using business credentials
+    mailbox = get_email_by_business_id(business.id)
+
+    # Get unread emails
+    unread_emails = mailbox.list_emails(query="is:unread")
+
+    # Initialize assistant for generating responses
+    asst_config = db.get_assistant_by_business_and_type(business.id, "email")
+    tz = db.get_first_associate_timezone_by_business_id(business.id)
+    assistant = Assistant(openai_creds, asst_config.openai_assistant_id, tz)
+    conversation = db.create_conversation(asst_config.id, tz, assistant.thread.thread_id)
+
+    drafts_created_count = 0
+    thread_ids = set(m["threadId"] for m in unread_emails)
+    for thread_id in thread_ids:
+        # Get full email content
+        thread = mailbox.get_messages_in_thread(thread_id)
+        if not thread:
+            continue
+
+        # Generate AI response using assistant
+        messages: list[Message] = []
+        for email in thread:
+            message: AssistantMessage = {"role": "user", "content": json.dumps(email)}
+            assistant.add_message(message)
+            messages.append(Message(**message, conversation_id=conversation.id))
+        response = assistant.retrieve_response()
+        messages.append(Message(conversation_id=conversation.id, role="assistant", content=response))
+        db.insert_messages(messages)
+
+        message_id = thread[-1]["message_id"]
+        response_payload: dict[str, str] = json.loads(strip_markdown_lines(response))
+
+        # Create draft instead of sending email
+        mailbox.create_draft(
+            to=response_payload["to"],
+            subject=response_payload["subject"],
+            body=response_payload["body"],
+            message_id=message_id,
+            thread_id=thread_id,
+            is_html=True,
+        )
+        drafts_created_count += 1
+
+    return {"drafts_created": drafts_created_count}
 
 
 @app.post("/upload-photo/", dependencies=[Depends(api_key_dependency)])

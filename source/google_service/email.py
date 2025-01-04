@@ -6,7 +6,7 @@ import markdown
 import structlog
 
 from .auth import GoogleServiceBase
-from .model import EmailListItem, EmailMessage
+from .model import EmailListItem, EmailMessage, EmailMesssagePayload
 
 log = structlog.stdlib.get_logger()
 
@@ -14,6 +14,38 @@ log = structlog.stdlib.get_logger()
 class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
     api_name: str = "gmail"
     api_version: str = "v1"
+
+    def create_email_message(
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        is_html: bool = False,
+        message_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> EmailMesssagePayload:
+        if not is_html:
+            # If it's markdown, convert it to HTML
+            body = markdown.markdown(body)
+
+        message = MIMEText(body, "html")
+        message["to"] = to
+        message["subject"] = subject
+        if message_id:
+            message["In-Reply-To"] = message_id  # Send the message ID of the original email
+            message["References"] = message_id  # Update this to include previous Message-IDs if necessary
+        else:
+            # You might need to send 'References' with an empty string or a unique ID if no threading is used.
+            message["References"] = ""
+
+        raw_message = urlsafe_b64encode(message.as_bytes()).decode()
+
+        # Create the message body and specify the thread ID
+        body_payload: EmailMesssagePayload = {"raw": raw_message}
+        if thread_id:
+            body_payload["threadId"] = thread_id  # Include threadId if provided
+
+        return body_payload
 
     def send_email(
         self,
@@ -34,29 +66,9 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             is_html (bool): True if the body is HTML, False if it is plain text or markdown.
             thread_id (str): The ID of the thread to which this email is a reply.
         """
-        if not is_html:
-            # If it's markdown, convert it to HTML
-            body = markdown.markdown(body)
-
-        message = MIMEText(body, "html")
-        message["to"] = to
-        message["subject"] = subject
-        if message_id:
-            message["In-Reply-To"] = message_id  # Send the message ID of the original email
-            message["References"] = message_id  # Update this to include previous Message-IDs if necessary
-        else:
-            # You might need to send 'References' with an empty string or a unique ID if no threading is used.
-            message["References"] = ""
-
-        raw_message = urlsafe_b64encode(message.as_bytes()).decode()
-
+        message = self.create_email_message(to, subject, body, is_html, message_id, thread_id)
         try:
-            # Create the message body and specify the thread ID
-            body_payload = {"raw": raw_message}
-            if thread_id:
-                body_payload["threadId"] = thread_id  # Include threadId if provided
-
-            self.service.users().messages().send(userId="me", body=body_payload).execute()
+            self.service.users().messages().send(userId="me", body=message).execute()
             log.info(f"Email sent to {to} in thread {thread_id}")
         except Exception:
             log.exception("An error occurred while sending the email.")
@@ -186,3 +198,23 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             log.info(f"All messages in thread {thread_id} marked as read.")
         except Exception:
             log.exception(f"An error occurred while marking thread {thread_id} as read.")
+
+    def create_draft(
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        is_html: bool = False,
+        message_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> None:
+        message = self.create_email_message(to, subject, body, is_html, message_id, thread_id)
+        try:
+            # Log the constructed message for debugging
+            log.debug("Creating draft with message:", message=message)
+
+            draft = self.service.users().drafts().create(userId="me", body=message).execute()
+            log.info(f"Draft created for {to} in thread {thread_id}, draft ID: {draft['id']}")
+        except Exception as e:
+            log.exception("An error occurred while creating the draft.")
+            raise RuntimeError("Failed to create email draft.") from e  # Optionally re-raise with a custom message

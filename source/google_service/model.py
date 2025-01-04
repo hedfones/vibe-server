@@ -45,3 +45,8 @@ class EmailMessage(TypedDict):
     sender: str
     date_sent: str
     message_id: str
+
+
+class EmailMesssagePayload(TypedDict):
+    raw: str
+    threadId: NotRequired[str]
