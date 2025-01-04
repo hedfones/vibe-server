@@ -25,25 +25,22 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         thread_id: str | None = None,
     ) -> EmailMesssagePayload:
         if not is_html:
-            # If it's markdown, convert it to HTML
             body = markdown.markdown(body)
 
         message = MIMEText(body, "html")
         message["to"] = to
         message["subject"] = subject
         if message_id:
-            message["In-Reply-To"] = message_id  # Send the message ID of the original email
-            message["References"] = message_id  # Update this to include previous Message-IDs if necessary
+            message["In-Reply-To"] = message_id
+            message["References"] = message_id
         else:
-            # You might need to send 'References' with an empty string or a unique ID if no threading is used.
             message["References"] = ""
 
         raw_message = urlsafe_b64encode(message.as_bytes()).decode()
 
-        # Create the message body and specify the thread ID
         body_payload: EmailMesssagePayload = {"raw": raw_message}
         if thread_id:
-            body_payload["threadId"] = thread_id  # Include threadId if provided
+            body_payload["threadId"] = thread_id
 
         return body_payload
 
@@ -209,11 +206,11 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
         thread_id: str | None = None,
     ) -> None:
         message = self.create_email_message(to, subject, body, is_html, message_id, thread_id)
+        payload = {"message": message}
         try:
             # Log the constructed message for debugging
             log.debug("Creating draft with message:", message=message)
-
-            draft = self.service.users().drafts().create(userId="me", body=message).execute()
+            draft = self.service.users().drafts().create(userId="me", body=payload).execute()
             log.info(f"Draft created for {to} in thread {thread_id}, draft ID: {draft['id']}")
         except Exception as e:
             log.exception("An error occurred while creating the draft.")
