@@ -24,13 +24,14 @@ db = DatabaseService(db_creds)
 
 
 def get_google_service_client_credentials(secret_id: str) -> tuple[str, str | None, SecretUpdateCallbackFunctionType]:
+    secret_name = "GOOGLE_CLIENT_KEY_SECRET_VIBE"
+    client_key_secret = json.dumps(secrets.get_raw(secret_name))
+
     secret_name = f"GOOGLE_OAUTH2_{secret_id}"
-    creds = secrets.get_raw(secret_name)
-    client_credentials, token = creds["secret"], creds.get("token")
+    token = secrets.get_raw(secret_name)["token"]
     token = json.dumps(token) if token else None
-    client_credentials = json.dumps(client_credentials)
     callback = secrets.get_update_callback(secret_name)
-    return client_credentials, token, callback
+    return client_key_secret, token, callback
 
 
 def get_google_calendar_by_calendar_id(calendar_id: str) -> GoogleCalendar:

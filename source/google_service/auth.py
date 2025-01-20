@@ -22,10 +22,10 @@ SCOPES = [
 ]
 
 
-T = TypeVar("T", bound="GoogleServiceBase")
+GoogleServiceType = TypeVar("GoogleServiceType", bound="GoogleServiceBase")
 
 
-class GoogleServiceBase(Generic[T]):
+class GoogleServiceBase(Generic[GoogleServiceType]):
     """
     Abstract base class for Google Calendar services.
     """
@@ -38,11 +38,11 @@ class GoogleServiceBase(Generic[T]):
 
     @classmethod
     def from_oauth2(
-        cls: type[T],
+        cls: type[GoogleServiceType],
         client_secret: str,  # Accepting client_secret as a string
         token: str | None,  # Accepting token as a string
         refresh_callback: SecretUpdateCallbackFunctionType,
-    ) -> T:
+    ) -> GoogleServiceType:
         creds: Credentials | None = None
 
         # Attempt to retrieve the stored token from AWS Secrets Manager
@@ -87,7 +87,7 @@ class GoogleServiceBase(Generic[T]):
         return cls(service)
 
     @classmethod
-    def from_service_account(cls: type[T], service_account_base64: str) -> T:
+    def from_service_account(cls: type[GoogleServiceType], service_account_base64: str) -> GoogleServiceType:
         decoded = base64.b64decode(service_account_base64)
         creds_info = json.loads(decoded)
         creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
