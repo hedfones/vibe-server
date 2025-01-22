@@ -23,25 +23,22 @@ db_creds = PostgresCredentials(
 db = DatabaseService(db_creds)
 
 
-def get_google_service_client_credentials(secret_id: str) -> tuple[str, str | None, SecretUpdateCallbackFunctionType]:
-    secret_name = "GOOGLE_CLIENT_KEY_SECRET_VIBE"
-    client_key_secret = json.dumps(secrets.get_raw(secret_name))
-
+def get_google_service_client_credentials(secret_id: str) -> tuple[str | None, SecretUpdateCallbackFunctionType]:
     secret_name = f"GOOGLE_OAUTH2_{secret_id}"
     token = secrets.get_raw(secret_name)["token"]
     token = json.dumps(token) if token else None
     callback = secrets.get_update_callback(secret_name)
-    return client_key_secret, token, callback
+    return token, callback
 
 
 def get_google_calendar_by_calendar_id(calendar_id: str) -> GoogleCalendar:
-    client_secret, token, callback = get_google_service_client_credentials(calendar_id)
-    return GoogleCalendar.from_oauth2(client_secret, token, callback)
+    token, callback = get_google_service_client_credentials(calendar_id)
+    return GoogleCalendar.from_oauth2(token, callback)
 
 
 def get_gmail_by_email_id(email_id: str) -> GoogleGmail:
-    client_secret, token, callback = get_google_service_client_credentials(email_id)
-    return GoogleGmail.from_oauth2(client_secret, token, callback)
+    token, callback = get_google_service_client_credentials(email_id)
+    return GoogleGmail.from_oauth2(token, callback)
 
 
 def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:

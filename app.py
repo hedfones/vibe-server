@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from openai.types.shared_params.function_definition import FunctionDefinition
 
+from endpoints.auth import router as auth_router
 from source import Assistant, AssistantMessage, FileManager, OpenAICredentials, SecretsManager
 from source.database import Message, Photo
 from source.database.model import Business
@@ -50,7 +51,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 # Add CORSMiddleware to allow requests from the client
 app.add_middleware(

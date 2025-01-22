@@ -4,10 +4,9 @@ import pickle
 from typing import Generic, TypeVar
 
 import structlog
+from fastapi import HTTPException
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
 
 from .model import SecretUpdateCallbackFunctionType
@@ -16,7 +15,7 @@ log = structlog.stdlib.get_logger()
 
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/gmail.send",
+    # "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
 ]
@@ -39,39 +38,29 @@ class GoogleServiceBase(Generic[GoogleServiceType]):
     @classmethod
     def from_oauth2(
         cls: type[GoogleServiceType],
-        client_secret: str,  # Accepting client_secret as a string
         token: str | None,  # Accepting token as a string
         refresh_callback: SecretUpdateCallbackFunctionType,
     ) -> GoogleServiceType:
-        creds: Credentials | None = None
+        if token is None:
+            raise HTTPException(400, detail="Organization has not completed Google OAuth2 setup.")
 
         # Attempt to retrieve the stored token from AWS Secrets Manager
         try:
-            if token:
-                token_bytes = base64.b64decode(token)
-                creds = pickle.loads(token_bytes)
+            token_bytes = base64.b64decode(token)
+            creds = pickle.loads(token_bytes)
         except Exception as e:
             log.exception(f"Failed to load credentials from Secrets Manager: {e}")
+            raise HTTPException(500, detail="Failed to load google credentials from Secrets Manager.") from e
 
         # If credentials are not available or invalid, initiate OAuth2 flow
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
+        if not creds.valid:
+            if creds.expired and creds.refresh_token:
                 try:
                     creds.refresh(Request())
                     log.info("Credentials refreshed.")
                 except Exception as e:
                     log.exception(f"Error refreshing credentials: {e}")
                     creds = None
-
-            if not creds or not creds.valid:
-                try:
-                    client_secrets = json.loads(client_secret)
-                    flow = InstalledAppFlow.from_client_config(client_secrets, SCOPES)
-                    creds = flow.run_local_server(port=8081)
-                    log.info("Credentials obtained from OAuth flow.")
-                except Exception as e:
-                    log.exception(f"Error during OAuth flow: {e}")
-                    raise
 
             # Serialize and store the updated credentials back to Secrets Manager
             try:

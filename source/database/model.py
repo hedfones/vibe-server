@@ -17,6 +17,7 @@ class Business(SQLModel, table=True):
     name: str
     calendar_service: str
     calendar_service_id: str
+    calendar_service_authenticated: bool = False
     email_service: str
     email_service_id: str
     notion_page_id: str
