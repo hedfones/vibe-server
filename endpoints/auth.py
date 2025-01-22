@@ -27,6 +27,11 @@ log.info("Credentials obtained from OAuth flow.")
 
 @router.get("/google/{organization_id}")  # Change to use organization_id in the path
 async def google_auth(organization_id: str):
+    business = db.get_business_by_id(int(organization_id))
+    if not business:
+        raise HTTPException(404, detail="Business not found.")
+    if business.calendar_service_authenticated:
+        raise HTTPException(400, detail="Google Calendar service already authenticated.")
     state = json.dumps({"organization_id": organization_id})
     authorization_url, _ = flow.authorization_url(access_type="offline", prompt="consent", state=state)
     return RedirectResponse(authorization_url)
