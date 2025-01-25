@@ -40,7 +40,7 @@ async def google_auth(organization_id: str):
 @router.get("/google/callback/")
 async def google_callback(code: str, state: str):
     # Fetch the token using the authorization code
-    _ = flow.fetch_token(code=code, client_secret=client_key_secret["installed"]["client_secret"])
+    _ = flow.fetch_token(code=code, client_secret=client_key_secret["web"]["client_secret"])
     credentials = flow.credentials  # This is a Credentials object
 
     state_data: dict[str, int] = json.loads(state)
