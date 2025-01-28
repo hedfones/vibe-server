@@ -16,21 +16,21 @@ anyio==4.8.0
     #   watchfiles
 apscheduler==3.11.0
     # via -r requirements.in
-attrs==24.3.0
+attrs==25.1.0
     # via aiohttp
-boto3==1.36.2
+boto3==1.36.6
     # via -r requirements.in
-boto3-stubs==1.36.2
+boto3-stubs==1.36.6
     # via -r requirements.in
-botocore==1.36.2
+botocore==1.36.6
     # via
     #   boto3
     #   s3transfer
-botocore-stubs==1.36.2
+botocore-stubs==1.36.6
     # via
     #   boto3-stubs
     #   types-boto3
-cachetools==5.5.0
+cachetools==5.5.1
     # via google-auth
 certifi==2024.12.14
     # via
@@ -50,7 +50,7 @@ dnspython==2.7.0
     # via email-validator
 email-validator==2.2.0
     # via fastapi
-fastapi==0.115.6
+fastapi==0.115.7
     # via -r requirements.in
 fastapi-cli==0.0.7
     # via fastapi
@@ -64,9 +64,9 @@ google-api-python-client==2.159.0
     # via
     #   -r requirements.in
     #   google-api-python-client-stubs
-google-api-python-client-stubs==1.28.0
+google-api-python-client-stubs==1.29.0
     # via -r requirements.in
-google-auth==2.37.0
+google-auth==2.38.0
     # via
     #   google-api-core
     #   google-api-python-client
@@ -117,19 +117,19 @@ jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
     # via jsonpatch
-langchain==0.3.14
+langchain==0.3.15
     # via -r requirements.in
-langchain-core==0.3.30
+langchain-core==0.3.31
     # via
     #   -r requirements.in
     #   langchain
     #   langchain-openai
     #   langchain-text-splitters
-langchain-openai==0.3.1
+langchain-openai==0.3.2
     # via -r requirements.in
 langchain-text-splitters==0.3.5
     # via langchain
-langsmith==0.2.11
+langsmith==0.3.1
     # via
     #   langchain
     #   langchain-core
@@ -151,7 +151,7 @@ numpy==1.26.4
     # via langchain
 oauthlib==3.2.2
     # via requests-oauthlib
-openai==1.59.8
+openai==1.60.1
     # via
     #   -r requirements.in
     #   langchain-openai
@@ -180,7 +180,7 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.1
     # via google-auth
-pydantic==2.10.5
+pydantic==2.10.6
     # via
     #   -r requirements.in
     #   fastapi
@@ -234,7 +234,7 @@ rich-toolkit==0.13.2
     # via fastapi-cli
 rsa==4.9
     # via google-auth
-s3transfer==0.11.1
+s3transfer==0.11.2
     # via boto3
 shellingham==1.5.4
     # via typer
@@ -250,7 +250,7 @@ sqlalchemy==2.0.37
     #   sqlmodel
 sqlmodel==0.0.22
     # via -r requirements.in
-starlette==0.41.3
+starlette==0.45.3
     # via fastapi
 structlog==25.1.0
     # via -r requirements.in
@@ -264,15 +264,15 @@ tqdm==4.67.1
     # via openai
 typer==0.15.1
     # via fastapi-cli
-types-awscrt==0.23.6
+types-awscrt==0.23.7
     # via botocore-stubs
-types-boto3==1.36.2
+types-boto3==1.36.6
     # via -r requirements.in
 types-boto3-cloudformation==1.36.0
     # via types-boto3
 types-boto3-dynamodb==1.36.0
     # via types-boto3
-types-boto3-ec2==1.36.2
+types-boto3-ec2==1.36.5
     # via types-boto3
 types-boto3-lambda==1.36.0
     # via types-boto3
@@ -286,7 +286,7 @@ types-boto3-sqs==1.36.0
     # via types-boto3
 types-httplib2==0.22.0.20241221
     # via google-api-python-client-stubs
-types-s3transfer==0.11.1
+types-s3transfer==0.11.2
     # via
     #   boto3-stubs
     #   types-boto3
@@ -333,3 +333,5 @@ websockets==14.2
     # via uvicorn
 yarl==1.18.3
     # via aiohttp
+zstandard==0.23.0
+    # via langsmith

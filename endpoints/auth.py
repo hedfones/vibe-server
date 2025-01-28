@@ -1,5 +1,7 @@
+import base64
 import json
 import os
+import pickle
 
 import structlog
 from fastapi import APIRouter, HTTPException
@@ -48,7 +50,9 @@ async def google_callback(code: str, state: str):
     if business is None:
         raise HTTPException(404, detail="Business not found.")
 
-    secrets.update(f"GOOGLE_OAUTH2_{business.calendar_service_id}", "token", credentials.to_json())
+    token_pickle = pickle.dumps(credentials)
+    token_encoded = base64.b64encode(token_pickle).decode("utf-8")
+    secrets.update(f"GOOGLE_OAUTH2_{business.calendar_service_id}", "token", token_encoded)
 
     db.update_business(business.id, {"calendar_service_authenticated": True})
 
