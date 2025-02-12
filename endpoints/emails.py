@@ -32,7 +32,7 @@ def process_unread_emails(x_api_key: str = Header(...)) -> dict[str, int]:
     Process unread emails for a business and send the generated responses.
     """
     business: Business = db.get_business_by_api_key(x_api_key)
-    processed_count = write_response_to_unread_email(business, action="send")
+    processed_count = process_all_unread_emails_in_business_inbox(business, action="send")
     return {"processed_emails": processed_count}
 
 
@@ -42,11 +42,11 @@ def process_unread_emails_draft(x_api_key: str = Header(...)) -> dict[str, int]:
     Process unread emails for a business and create draft responses.
     """
     business: Business = db.get_business_by_api_key(x_api_key)
-    drafts_created_count = write_response_to_unread_email(business, action="draft")
+    drafts_created_count = process_all_unread_emails_in_business_inbox(business, action="draft")
     return {"drafts_created": drafts_created_count}
 
 
-def write_response_to_unread_email(business: Business, action: Literal["draft", "send"]) -> int:
+def process_all_unread_emails_in_business_inbox(business: Business, action: Literal["draft", "send"]) -> int:
     """
     Helper function to process unread emails from a business mailbox.
     Generates AI responses via the Assistant and either sends or drafts the email.

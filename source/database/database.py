@@ -41,7 +41,7 @@ class DatabaseService:
         # Construct the PostgreSQL URL using the provided database credentials
         postgres_url = (
             f"postgresql://{credentials.user}:{credentials.password}@{credentials.host}:{credentials.port}"
-            f"/{credentials.database}"
+            f"/{credentials.database}?gssencmode=disable"
         )
         # Create an SQLAlchemy engine using the constructed PostgreSQL URL
         engine = create_engine(postgres_url)

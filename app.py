@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from endpoints.assistant import router as assistant_router
 from endpoints.auth import router as auth_router
 from endpoints.conversation import router as conversation_router
+from endpoints.emails import process_all_unread_emails_in_business_inbox
 from endpoints.emails import router as emails_router
-from endpoints.emails import write_response_to_unread_email
 from endpoints.files import router as files_router
 from endpoints.notions import router as notion_router  # or from endpoints.notation.py if you prefer
 from source.utils import db
@@ -23,7 +23,7 @@ async def scheduled_task():
     business_ids: set[int] = {1}
     for id in business_ids:
         business = db.get_business_by_id(id)
-        drafts_created_count = write_response_to_unread_email(business, action="draft")
+        drafts_created_count = process_all_unread_emails_in_business_inbox(business, action="draft")
         return {"drafts_created": drafts_created_count}
 
 

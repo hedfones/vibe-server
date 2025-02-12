@@ -6,7 +6,7 @@ import markdown
 import structlog
 
 from .auth import GoogleServiceBase
-from .model import EmailListItem, EmailMessage, EmailMesssagePayload
+from .model import EmailHeader, EmailListItem, EmailMessage, EmailMesssagePayload
 
 log = structlog.stdlib.get_logger()
 
@@ -87,7 +87,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
                 log.warning("No emails found.")
                 return []
             else:
-                log.warning(f"Found {len(messages)} email(s).")
+                log.info(f"Found {len(messages)} email(s).")
                 return messages
         except Exception:
             log.exception("An error occurred while listing emails")
@@ -112,20 +112,21 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             decoded_body = urlsafe_b64decode(body.encode("utf-8")).decode("utf-8")
 
             # Find the subject, sender, and date
-            headers = message.get("payload", {}).get("headers", [])
-            subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
-            sender = next((header["value"] for header in headers if header["name"] == "From"), None)
-            date_sent = next((header["value"] for header in headers if header["name"] == "Date"), None)
-            message_id = next((header["value"] for header in headers if header["name"] == "Message-ID"), None)
+            headers: list[EmailHeader] = message.get("payload", {}).get("headers", [])
+            subject = next((header["value"] for header in headers if header["name"] == "Subject"))
+            sender = next((header["value"] for header in headers if header["name"] == "From"))
+            date_sent = next((header["value"] for header in headers if header["name"] == "Date"))
+            message_id = next((header["value"] for header in headers if header["name"] == "Message-ID"))
 
             # Return the email details including Message-ID
-            return {
+            message_details: EmailMessage = {
                 "sender": sender,
                 "subject": subject,
                 "body": decoded_body,
                 "date_sent": date_sent,
                 "message_id": message_id,
             }
+            return message_details
         else:
             log.warning(f"No parts found in message with ID: {message.get('id')}")
             return None
