@@ -55,7 +55,7 @@ def process_all_unread_emails_in_business_inbox(business: Business, action: Lite
     mailbox = get_email_by_business_id(business.id)
 
     # Get unread emails.
-    unread_emails = mailbox.list_emails(query="is:unread")
+    unread_emails = mailbox.list_emails(query="is:unread in:inbox")
 
     # Configure the Assistant for email responses.
     asst_config = db.get_assistant_by_business_and_type(business.id, "email")

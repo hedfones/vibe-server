@@ -206,7 +206,7 @@ class Assistant:
             run = self.client.beta.threads.runs.create_and_poll(
                 thread_id=self.thread.thread_id,
                 assistant_id=self.assistant_id,
-                tool_choice="required",
+                tool_choice="auto",
             )
 
         timeout_timestamp = datetime.now() + timedelta(seconds=30)
