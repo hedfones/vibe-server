@@ -20,11 +20,13 @@ scheduler = AsyncIOScheduler()
 
 async def scheduled_task():
     # Replace with your function call
-    business_ids: set[int] = {1}
+    business_ids: set[int] = {1, 2}
+    return_values = {}
     for id in business_ids:
         business = db.get_business_by_id(id)
         drafts_created_count = process_all_unread_emails_in_business_inbox(business, action="draft")
-        return {"drafts_created": drafts_created_count}
+        return_values[id] = {"drafts_created": drafts_created_count}
+    return return_values
 
 
 @asynccontextmanager

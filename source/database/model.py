@@ -20,6 +20,7 @@ class Business(SQLModel, table=True):
     calendar_service_authenticated: bool = False
     email_service: str
     email_service_id: str
+    inbox_email_address: str | None = None
     notion_page_id: str
     created_at: datetime = Field(
         # Sets the default creation time to now in UTC if not provided.
