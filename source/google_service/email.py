@@ -93,7 +93,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             log.exception("An error occurred while listing emails")
             return []
 
-    def _parse_email_message(self, message: dict[str, Any]) -> EmailMessage | None:
+    def _parse_email_message(self, message: dict[str, Any], email_id: str) -> EmailMessage | None:
         """
         Parses an email message to extract the sender, subject, body, and date.
 
@@ -116,7 +116,11 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             subject = next((header["value"] for header in headers if header["name"] == "Subject"))
             sender = next((header["value"] for header in headers if header["name"] == "From"))
             date_sent = next((header["value"] for header in headers if header["name"] == "Date"))
-            message_id = next((header["value"] for header in headers if header["name"] == "Message-ID"))
+            try:
+                message_id = next((header["value"] for header in headers if header["name"] == "Message-ID"))
+            except StopIteration:
+                log.warning("Message missing message ID. Will rely on email service to attach email to thread.")
+                message_id = None
 
             # Return the email details including Message-ID
             message_details: EmailMessage = {
