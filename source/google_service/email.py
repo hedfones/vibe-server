@@ -93,7 +93,7 @@ class GoogleGmail(GoogleServiceBase["GoogleGmail"]):
             log.exception("An error occurred while listing emails")
             return []
 
-    def _parse_email_message(self, message: dict[str, Any], email_id: str) -> EmailMessage | None:
+    def _parse_email_message(self, message: dict[str, Any]) -> EmailMessage | None:
         """
         Parses an email message to extract the sender, subject, body, and date.
 
