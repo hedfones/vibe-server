@@ -4,21 +4,13 @@ from typing import Literal
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from source import Assistant, OpenAICredentials, SecretsManager
+from source.bedrock_assistant import BedrockAssistant
 from source.database import Message
 from source.database.model import Business
 from source.utils import db, get_email_by_business_id, strip_markdown_lines
 
 log = structlog.stdlib.get_logger()
 router = APIRouter()
-
-# Initialize OpenAI credentials using secrets.
-secrets = SecretsManager()
-openai_creds = OpenAICredentials(
-    api_key=secrets.get("OPENAI_API_KEY"),
-    project=secrets.get("OPENAI_PROJECT"),
-    organization=secrets.get("OPENAI_ORGANIZATION"),
-)
 
 
 def api_key_dependency(x_api_key: str = Header(...)):
@@ -60,10 +52,18 @@ def process_all_unread_emails_in_business_inbox(business: Business, action: Lite
         query = f"{query.strip()} to:{addr}"
     unread_emails = mailbox.list_emails(query=query)
 
-    # Configure the Assistant for email responses.
+    # Configure the BedrockAssistant for email responses.
     asst_config = db.get_assistant_by_business_and_type(business.id, "email")
     tz = db.get_first_associate_timezone_by_business_id(business.id)
-    assistant = Assistant(openai_creds, asst_config.openai_assistant_id, tz)
+
+    # Initialize with AWS Bedrock
+    assistant = BedrockAssistant(
+        credentials=None,  # Will use AWS credentials from environment variables
+        assistant_id=asst_config.openai_assistant_id,
+        client_timezone=tz,
+        instructions=asst_config.instructions,
+    )
+
     conversation = db.create_conversation(asst_config.id, tz, assistant.thread.thread_id)
 
     count = 0

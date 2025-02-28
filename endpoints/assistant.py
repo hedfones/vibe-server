@@ -6,7 +6,7 @@ import structlog
 import yaml
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from source import Assistant, OpenAICredentials, SecretsManager
+from source.bedrock_assistant import BedrockAssistant
 from source.database.model import Business
 from source.utils import db
 
@@ -19,13 +19,8 @@ def api_key_dependency(x_api_key: str = Header(...)):
         raise HTTPException(status_code=403, detail="Invalid API Key")
 
 
-# Create the OpenAI credentials from secrets.
-secrets = SecretsManager()
-openai_creds = OpenAICredentials(
-    api_key=secrets.get("OPENAI_API_KEY"),
-    project=secrets.get("OPENAI_PROJECT"),
-    organization=secrets.get("OPENAI_ORGANIZATION"),
-)
+# No need to explicitly manage AWS credentials
+# AWS SDK will automatically pick them up from environment variables
 
 
 @router.post("/update-assistant/", dependencies=[Depends(api_key_dependency)])
@@ -39,7 +34,12 @@ def update_assistant(x_api_key: str = Header(...)) -> dict:
     assistant_configs = db.get_all_assistants_by_business_id(business.id)
 
     for asst_config in assistant_configs:
-        assistant = Assistant(openai_creds, asst_config.openai_assistant_id)
+        # Initialize with AWS Bedrock instead of OpenAI
+        assistant = BedrockAssistant(
+            credentials=None,  # Will use AWS credentials from environment variables
+            assistant_id=asst_config.openai_assistant_id,
+            instructions=asst_config.instructions,
+        )
         instructions = f"{asst_config.instructions}\n\n{'-' * 80}\n\n{asst_config.context}"
         assistant_name = f"Vibe - {asst_config.type} - {business.name}"
 

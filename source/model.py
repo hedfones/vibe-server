@@ -104,7 +104,7 @@ class AvailabilityWindow(BaseModel):
         }
 
 
-class CheckAvailabilityRequest(BaseModel):
+class CheckAvailabilityTool(BaseModel):
     """Request model for checking availability.
 
     Attributes:
@@ -116,7 +116,7 @@ class CheckAvailabilityRequest(BaseModel):
     location_id: int
 
 
-class GetProductLocationsRequest(BaseModel):
+class GetProductLocationsTool(BaseModel):
     """Request model for getting product locations.
 
     Attributes:
@@ -175,7 +175,7 @@ class SetAppointmentsRequest(BaseModel):
         return request
 
 
-class GetProductPhotosRequest(BaseModel):
+class GetProductPhotosTool(BaseModel):
     """Request model for getting product photos.
 
     Attributes:
@@ -195,7 +195,7 @@ class GetPhotoRequest(BaseModel):
     photo_id: int
 
 
-class HandoffToAdminRequest(BaseModel):
+class HandoffToAdminTool(BaseModel):
     customer_email: str
 
 

@@ -3,7 +3,7 @@ import io
 from pathlib import Path
 
 from langchain.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_aws.chat_models import ChatBedrock
 from PIL import Image
 
 MAX_RESOLUTION = 3000  # pixels
@@ -28,7 +28,11 @@ def encode_image(image_path: str | Path) -> str:
 
 
 def describe_image(image_path: str | Path) -> str:
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    # Using Claude 3 Sonnet Vision on AWS Bedrock
+    llm = ChatBedrock(
+        model="anthropic.claude-3-sonnet-20240229-v1:0",
+    )
+
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", "Please describe the provided image in a single sentence."),

@@ -2,8 +2,10 @@
 #    uv pip compile requirements.in
 aiohappyeyeballs==2.4.6
     # via aiohttp
-aiohttp==3.11.12
-    # via langchain
+aiohttp==3.11.13
+    # via
+    #   langchain
+    #   langchain-community
 aiosignal==1.3.2
     # via aiohttp
 annotated-types==0.7.0
@@ -18,19 +20,21 @@ apscheduler==3.11.0
     # via -r requirements.in
 attrs==25.1.0
     # via aiohttp
-boto3==1.36.19
+boto3==1.37.3
+    # via
+    #   -r requirements.in
+    #   langchain-aws
+boto3-stubs==1.37.3
     # via -r requirements.in
-boto3-stubs==1.36.19
-    # via -r requirements.in
-botocore==1.36.19
+botocore==1.37.3
     # via
     #   boto3
     #   s3transfer
-botocore-stubs==1.36.18
+botocore-stubs==1.37.1
     # via
     #   boto3-stubs
     #   types-boto3
-cachetools==5.5.1
+cachetools==5.5.2
     # via google-auth
 certifi==2025.1.31
     # via
@@ -44,13 +48,15 @@ click==8.1.8
     #   rich-toolkit
     #   typer
     #   uvicorn
+dataclasses-json==0.6.7
+    # via langchain-community
 distro==1.9.0
     # via openai
 dnspython==2.7.0
     # via email-validator
 email-validator==2.2.0
     # via fastapi
-fastapi==0.115.8
+fastapi==0.115.9
     # via -r requirements.in
 fastapi-cli==0.0.7
     # via fastapi
@@ -60,7 +66,7 @@ frozenlist==1.5.0
     #   aiosignal
 google-api-core==2.24.1
     # via google-api-python-client
-google-api-python-client==2.160.0
+google-api-python-client==2.162.0
     # via
     #   -r requirements.in
     #   google-api-python-client-stubs
@@ -78,7 +84,7 @@ google-auth-httplib2==0.2.0
     #   google-api-python-client
 google-auth-oauthlib==1.2.1
     # via -r requirements.in
-googleapis-common-protos==1.67.0
+googleapis-common-protos==1.68.0
     # via google-api-core
 h11==0.14.0
     # via
@@ -98,6 +104,8 @@ httpx==0.28.1
     #   langsmith
     #   notion-client
     #   openai
+httpx-sse==0.4.0
+    # via langchain-community
 idna==3.10
     # via
     #   anyio
@@ -117,21 +125,27 @@ jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
     # via jsonpatch
-langchain==0.3.18
+langchain==0.3.19
+    # via
+    #   -r requirements.in
+    #   langchain-community
+langchain-aws==0.2.14
     # via -r requirements.in
-langchain-core==0.3.35
+langchain-community==0.3.18
+    # via -r requirements.in
+langchain-core==0.3.40
     # via
     #   -r requirements.in
     #   langchain
-    #   langchain-openai
+    #   langchain-aws
+    #   langchain-community
     #   langchain-text-splitters
-langchain-openai==0.3.5
-    # via -r requirements.in
 langchain-text-splitters==0.3.6
     # via langchain
-langsmith==0.3.8
+langsmith==0.3.11
     # via
     #   langchain
+    #   langchain-community
     #   langchain-core
 markdown==3.7
     # via -r requirements.in
@@ -139,29 +153,37 @@ markdown-it-py==3.0.0
     # via rich
 markupsafe==3.0.2
     # via jinja2
+marshmallow==3.26.1
+    # via dataclasses-json
 mdurl==0.1.2
     # via markdown-it-py
 multidict==6.1.0
     # via
     #   aiohttp
     #   yarl
+mypy-extensions==1.0.0
+    # via typing-inspect
 notion-client==2.3.0
     # via -r requirements.in
 numpy==1.26.4
-    # via langchain
+    # via
+    #   langchain
+    #   langchain-aws
+    #   langchain-community
 oauthlib==3.2.2
     # via requests-oauthlib
-openai==1.62.0
-    # via
-    #   -r requirements.in
-    #   langchain-openai
+openai==1.65.1
+    # via -r requirements.in
 orjson==3.10.15
     # via langsmith
 packaging==24.2
-    # via langchain-core
+    # via
+    #   langchain-core
+    #   langsmith
+    #   marshmallow
 pillow==11.1.0
     # via -r requirements.in
-propcache==0.2.1
+propcache==0.3.0
     # via
     #   aiohttp
     #   yarl
@@ -185,12 +207,16 @@ pydantic==2.10.6
     #   -r requirements.in
     #   fastapi
     #   langchain
+    #   langchain-aws
     #   langchain-core
     #   langsmith
     #   openai
+    #   pydantic-settings
     #   sqlmodel
 pydantic-core==2.27.2
     # via pydantic
+pydantic-settings==2.8.1
+    # via langchain-community
 pygments==2.19.1
     # via rich
 pyparsing==3.2.1
@@ -200,7 +226,9 @@ python-dateutil==2.9.0.post0
     #   -r requirements.in
     #   botocore
 python-dotenv==1.0.1
-    # via uvicorn
+    # via
+    #   pydantic-settings
+    #   uvicorn
 python-multipart==0.0.20
     # via fastapi
 pytz==2025.1
@@ -209,18 +237,17 @@ pyyaml==6.0.2
     # via
     #   -r requirements.in
     #   langchain
+    #   langchain-community
     #   langchain-core
     #   uvicorn
-regex==2024.11.6
-    # via tiktoken
 requests==2.32.3
     # via
     #   google-api-core
     #   langchain
+    #   langchain-community
     #   langsmith
     #   requests-oauthlib
     #   requests-toolbelt
-    #   tiktoken
 requests-oauthlib==2.0.0
     # via google-auth-oauthlib
 requests-toolbelt==1.0.0
@@ -234,7 +261,7 @@ rich-toolkit==0.13.2
     # via fastapi-cli
 rsa==4.9
     # via google-auth
-s3transfer==0.11.2
+s3transfer==0.11.3
     # via boto3
 shellingham==1.5.4
     # via typer
@@ -247,6 +274,7 @@ sniffio==1.3.1
 sqlalchemy==2.0.38
     # via
     #   langchain
+    #   langchain-community
     #   sqlmodel
 sqlmodel==0.0.22
     # via -r requirements.in
@@ -257,36 +285,37 @@ structlog==25.1.0
 tenacity==9.0.0
     # via
     #   langchain
+    #   langchain-community
     #   langchain-core
-tiktoken==0.8.0
-    # via langchain-openai
 tqdm==4.67.1
     # via openai
-typer==0.15.1
+typer==0.15.2
     # via fastapi-cli
 types-awscrt==0.23.10
     # via botocore-stubs
-types-boto3==1.36.19
+types-boto3==1.37.3
     # via -r requirements.in
-types-boto3-cloudformation==1.36.15
+types-boto3-bedrock==1.37.0
     # via types-boto3
-types-boto3-dynamodb==1.36.0
+types-boto3-cloudformation==1.37.0
     # via types-boto3
-types-boto3-ec2==1.36.18
+types-boto3-dynamodb==1.37.0
     # via types-boto3
-types-boto3-lambda==1.36.0
+types-boto3-ec2==1.37.2
     # via types-boto3
-types-boto3-rds==1.36.14
+types-boto3-lambda==1.37.0
     # via types-boto3
-types-boto3-s3==1.36.15
+types-boto3-rds==1.37.0
     # via types-boto3
-types-boto3-secretsmanager==1.36.0
+types-boto3-s3==1.37.0
     # via types-boto3
-types-boto3-sqs==1.36.0
+types-boto3-secretsmanager==1.37.0
+    # via types-boto3
+types-boto3-sqs==1.37.0
     # via types-boto3
 types-httplib2==0.22.0.20241221
     # via google-api-python-client-stubs
-types-s3transfer==0.11.2
+types-s3transfer==0.11.3
     # via
     #   boto3-stubs
     #   types-boto3
@@ -304,6 +333,7 @@ typing-extensions==4.12.2
     #   sqlalchemy
     #   typer
     #   types-boto3
+    #   types-boto3-bedrock
     #   types-boto3-cloudformation
     #   types-boto3-dynamodb
     #   types-boto3-ec2
@@ -312,7 +342,10 @@ typing-extensions==4.12.2
     #   types-boto3-s3
     #   types-boto3-secretsmanager
     #   types-boto3-sqs
-tzlocal==5.2
+    #   typing-inspect
+typing-inspect==0.9.0
+    # via dataclasses-json
+tzlocal==5.3
     # via apscheduler
 uritemplate==4.1.1
     # via google-api-python-client
@@ -329,7 +362,7 @@ uvloop==0.21.0
     # via uvicorn
 watchfiles==1.0.4
     # via uvicorn
-websockets==14.2
+websockets==15.0
     # via uvicorn
 yarl==1.18.3
     # via aiohttp

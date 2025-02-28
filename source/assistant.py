@@ -21,10 +21,10 @@ from .functions import (
     set_appointment,
 )
 from .model import (
-    CheckAvailabilityRequest,
-    GetProductLocationsRequest,
-    GetProductPhotosRequest,
-    HandoffToAdminRequest,
+    CheckAvailabilityTool,
+    GetProductLocationsTool,
+    GetProductPhotosTool,
+    HandoffToAdminTool,
     SetAppointmentsRequest,
 )
 
@@ -157,11 +157,11 @@ class Assistant:
 
             if tool.function.name == "check_availability":
                 tool_log.debug("Processing check_availability")
-                request = CheckAvailabilityRequest.model_validate(arguments)
+                request = CheckAvailabilityTool.model_validate(arguments)
                 body = get_availability(request.product_id, request.location_id, self.client_timezone)
             elif tool.function.name == "get_product_locations":
                 tool_log.debug("Processing get_product_locations")
-                request = GetProductLocationsRequest.model_validate(arguments)
+                request = GetProductLocationsTool.model_validate(arguments)
                 body = get_product_locations(request.product_id)
             elif tool.function.name == "get_product_list":
                 tool_log.debug("Processing get_product_list")
@@ -172,11 +172,11 @@ class Assistant:
                 body = set_appointment(request)
             elif tool.function.name == "get_product_photos":
                 tool_log.debug("Processing get_product_photos")
-                request = GetProductPhotosRequest.model_validate(arguments)
+                request = GetProductPhotosTool.model_validate(arguments)
                 body = get_product_photos(request.product_id)
             elif tool.function.name == "handoff_to_admin":
                 tool_log.debug("Processing handoff_to_admin")
-                request = HandoffToAdminRequest.model_validate(arguments)
+                request = HandoffToAdminTool.model_validate(arguments)
                 body = handoff_conversation_to_admin(request.customer_email, self.thread.thread_id)
             else:
                 tool_log.error("Unexpected tool function called")

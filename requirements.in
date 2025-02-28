@@ -22,13 +22,13 @@ google-api-python-client-stubs
 notion-client
 
 boto3
-types-boto3[essential, secretsmanager]
+types-boto3[essential, secretsmanager, s3, bedrock]
 boto3-stubs
 
 Markdown
 
-langchain 
+langchain
 langchain-core
-langchain-openai 
-openai
+langchain-aws
+langchain-community
 Pillow

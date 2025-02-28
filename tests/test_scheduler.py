@@ -5,7 +5,8 @@ from unittest.mock import Mock
 import pytest
 
 from source import AvailabilityWindow, Scheduler
-from source.database import Appointment, Associate, DatabaseService, Schedule
+from source.database import Associate, DatabaseService, Schedule
+from source.model import Appointment
 
 
 @pytest.fixture
