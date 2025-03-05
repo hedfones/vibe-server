@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Literal, Optional, TypedDict
+from typing import Any, Callable
 
 import structlog
 from langchain import hub
@@ -12,6 +14,7 @@ from langchain.tools.base import BaseTool
 from langchain_aws.chat_models import ChatBedrock
 from pydantic import BaseModel
 
+# Import functions and models from our own modules
 from .functions import (
     get_availability,
     get_product_list,
@@ -33,96 +36,68 @@ log = structlog.stdlib.get_logger()
 
 @dataclass
 class AWSCredentials:
-    """Data class for storing AWS credentials."""
+    """
+    Data class for storing AWS credentials.
+    """
 
     access_key_id: str
     secret_access_key: str
     region_name: str
 
 
-class AssistantMessage(TypedDict):
-    """TypedDict for Assistant messages indicating role and content."""
-
-    role: Literal["assistant", "user"]
-    content: str
+class AssistantMessage(dict[str, Any]):
+    """
+    dictionary type for an assistant message.
+    The keys are "role" (either "assistant" or "user") and "content".
+    """
 
 
 class Thread:
-    """Class representing a messaging thread."""
+    """Represents a messaging thread."""
 
-    def __init__(self, thread_id: Optional[str] = None) -> None:
-        """
-        Initializes a Thread instance.
-
-        Args:
-            thread_id: Optional thread identifier.
-        """
+    def __init__(self, thread_id: str | None = None) -> None:
         log.debug("Initializing Thread", thread_id=thread_id)
-        self._thread_id: Optional[str] = thread_id
-        self.messages: List[Dict[str, Any]] = []
+        self._thread_id: str | None = thread_id
+        self.messages: list[dict[str, Any]] = []
 
     @property
     def thread_id(self) -> str:
-        """
-        Retrieves the current thread ID. If no thread ID exists, a new ID is generated.
-
-        Returns:
-            A string representing the thread ID.
-        """
-        log.debug("Getting thread_id")
+        """Return a unique thread ID. Generate one if it does not exist."""
         if not self._thread_id:
             from uuid import uuid4
 
-            log.info("Creating new thread as thread_id is None")
             self._thread_id = str(uuid4())
+            log.info("Created new thread", thread_id=self._thread_id)
         return self._thread_id
 
-    def add_message(self, message: AssistantMessage) -> None:
-        """
-        Adds a message to the current thread.
-
-        Args:
-            message: A dictionary containing role and content of the message.
-        """
-        log.info("Adding message", message=message, thread_id=self.thread_id)
+    def add_message(self, message: dict[str, str]) -> None:
+        """Append a message to the thread."""
+        log.info("Adding message to thread", thread_id=self.thread_id, message=message)
         self.messages.append(message)
 
 
 class BedrockAssistant:
-    """Class representing an Assistant that interacts with AWS Bedrock."""
+    """
+    An assistant using AWS Bedrock within LangChain.
+    """
 
     def __init__(
         self,
-        credentials: Optional[AWSCredentials],
+        credentials: AWSCredentials | None,
         assistant_id: str,
         client_timezone: str = "UTC",
-        thread_id: Optional[str] = None,
+        thread_id: str | None = None,
         model_id: str = "us.meta.llama3-3-70b-instruct-v1:0",
         instructions: str = "",
     ) -> None:
-        """
-        Initializes a BedrockAssistant instance.
-
-        Args:
-            credentials: Optional AWSCredentials instance containing AWS access details.
-                        If None, credentials will be loaded from environment variables.
-            assistant_id: An identifier for the assistant.
-            client_timezone: Timezone of the client using this Assistant.
-            thread_id: Optional thread identifier to be used by the Assistant.
-            model_id: AWS Bedrock model ID to use
-            instructions: System instructions for the assistant
-        """
         log.debug("Initializing BedrockAssistant", assistant_id=assistant_id, client_timezone=client_timezone)
         self.assistant_id: str = assistant_id
         self.client_timezone: str = client_timezone
         self.instructions: str = instructions
-
         self.model_id: str = model_id
 
-        # Initialize Bedrock LLM
-        self.llm: ChatBedrock
+        # Initialize the Bedrock LLM with provided credentials or fall back on environment variables.
         if credentials is not None:
-            # Use provided credentials
             self.llm = ChatBedrock(
                 model=model_id,
                 region=credentials.region_name,
@@ -131,64 +106,54 @@ class BedrockAssistant:
                 aws_secret_access_key=credentials.secret_access_key,
             )
         else:
-            # Use environment variables for credentials
             self.llm = ChatBedrock(model=model_id)
 
-        # Setup agent tools
-        self.tools = self._create_tools()
-
-        # Setup thread
+        # Create tools and conversation thread.
+        self.tools: list[BaseTool] = self._create_tools()
         self.thread: Thread = Thread(thread_id)
 
-        # Setup memory - using the newer approach to avoid deprecation warnings
+        # Use ConversationBufferMemory as the agent’s memory.
+        self.memory: ConversationBufferMemory = ConversationBufferMemory(memory_key="chat_history")
 
-        # Create a memory that will store messages in the agent's chat history
-        self.memory = ConversationBufferMemory(return_messages=True, memory_key="chat_history")
-
-        # Create the agent
+        # Create the agent executor.
         self._create_agent()
 
-    def _create_tools(self) -> List[BaseTool]:
-        """Create the function tools for the agent.
-
-        Returns:
-            A list of LangChain tool objects.
+    def _create_tools(self) -> list[BaseTool]:
+        """
+        Create StructuredTools from our functions and schema definitions.
         """
 
+        # Helper inner classes (if needed) for additional schema validation.
         class SetAppointmentTool(BaseModel):
-            """Set an appointment based on provided details."""
-
             request: SetAppointmentsRequest
 
-        class GetProductListTool(BaseModel):
-            """Get the list of available products."""
-
+        class GetProductlistTool(BaseModel):
             pass
 
-        # Create the actual tools
-        tools = [
-            # Check availability tool
+        # Define the tools. (Lambda functions capture self so that client_timezone etc. are available.)
+        tools: list[BaseTool] = [
             create_tool(
                 name="check_availability",
                 description="Check availability for a product at a location",
                 schema=CheckAvailabilityTool,
-                func=lambda params: get_availability(params["product_id"], params["location_id"], self.client_timezone),
+                func=lambda params: get_availability(
+                    params["product_id"],
+                    params["location_id"],
+                    self.client_timezone,
+                ),
             ),
-            # Get product locations tool
             create_tool(
                 name="get_product_locations",
                 description="Get locations where a product is available",
                 schema=GetProductLocationsTool,
                 func=lambda params: get_product_locations(params["product_id"]),
             ),
-            # Get product list tool
             create_tool(
                 name="get_product_list",
                 description="Get the list of available products",
-                schema=GetProductListTool,
+                schema=GetProductlistTool,
                 func=lambda _: get_product_list(self.assistant_id),
             ),
-            # Set appointment tool
             create_tool(
                 name="set_appointment",
                 description="Set an appointment based on provided details",
@@ -197,33 +162,40 @@ class BedrockAssistant:
                     SetAppointmentsRequest.parse_json_to_request(params["request_json"])
                 ),
             ),
-            # Get product photos tool
             create_tool(
                 name="get_product_photos",
                 description="Get photos for a specific product",
                 schema=GetProductPhotosTool,
                 func=lambda params: get_product_photos(params["product_id"]),
             ),
-            # Handoff to admin tool
             create_tool(
                 name="handoff_to_admin",
                 description="Handoff the conversation to an admin",
                 schema=HandoffToAdminTool,
-                func=lambda params: handoff_conversation_to_admin(params["customer_email"], self.thread.thread_id),
+                func=lambda params: handoff_conversation_to_admin(
+                    params["customer_email"],
+                    self.thread.thread_id,
+                ),
             ),
         ]
-
         return tools
 
     def _create_agent(self) -> None:
-        """Create the LangChain agent with the defined tools."""
+        """
+        Create the LangChain agent and associated executor.
+        """
+        # Pull the prompt template from the hub.
         prompt: ChatPromptTemplate = hub.pull("anthonydresser/structured-chat-agent-llama")
 
-        # Create the agent
-        agent = create_structured_chat_agent(llm=self.llm, tools=self.tools, prompt=prompt)
+        # Create a structured chat agent with the provided LLM and tools.
+        agent = create_structured_chat_agent(
+            llm=self.llm,
+            tools=self.tools,
+            prompt=prompt,
+        )
 
-        # Create the agent executor
-        self.agent_executor: AgentExecutor = AgentExecutor(
+        # Build the AgentExecutor using the agent, tools, and conversation memory.
+        self.agent_executor = AgentExecutor(
             agent=agent,
             tools=self.tools,
             memory=self.memory,
@@ -231,80 +203,68 @@ class BedrockAssistant:
             handle_parsing_errors=True,
         )
 
-    def add_message(self, message: AssistantMessage) -> None:
+    def add_message(self, message: dict[str, str]) -> None:
         """
-        Adds a message to the Assistant's thread.
-
-        Args:
-            message: A dictionary containing role and content of the message.
+        Add a message to the thread and update agent memory.
         """
         log.info("Adding message to BedrockAssistant", message=message)
         self.thread.add_message(message)
-
-        # Update the memory
+        # Update the conversation memory (using the "chat_memory" interface).
         if message["role"] == "user":
             self.memory.chat_memory.add_user_message(message["content"])
         else:
             self.memory.chat_memory.add_ai_message(message["content"])
-        return
 
     def retrieve_response(self) -> str:
         """
-        Retrieves a response from the agent based on the conversation history.
+        Get a response from the agent based on the last user message.
+        Uses a timeout to avoid waiting indefinitely.
 
         Returns:
-            A string containing the retrieved message text.
+            The AI’s response as a string.
 
         Raises:
-            TimeoutError: If the assistant takes too long to respond.
+            TimeoutError: If a response is not returned in time.
+            Exception: If the agent run call errors.
         """
         log.debug("Retrieving response from BedrockAssistant")
-
-        # Get the last user message (if any)
-        user_messages = [m for m in self.thread.messages if m["role"] == "user"]
+        # Get the last user message.
+        user_messages = [m for m in self.thread.messages if m.get("role") == "user"]
         if not user_messages:
             return "No user messages to respond to."
 
         last_user_message = user_messages[-1]["content"]
+        timeout = datetime.now() + timedelta(seconds=30)
 
-        # Invoke the agent
-        timeout_timestamp = datetime.now() + timedelta(seconds=30)
-        try:
-            while datetime.now() < timeout_timestamp:
-                response = self.agent_executor.invoke({"input": last_user_message})
-                message_text = response["output"]
-
-                # Add the AI response to the thread messages
+        while datetime.now() < timeout:
+            try:
+                # In LangChain 0.3, we call .run() on the executor.
+                message_text = self.agent_executor.run(last_user_message)
+                # Add the assistant’s response to the conversation.
                 self.thread.add_message({"role": "assistant", "content": message_text})
-
                 return message_text
+            except Exception as e:
+                log.error("Error retrieving response", error=str(e))
+                raise e
 
-            raise TimeoutError("Assistant took too long to respond.")
-        except Exception as e:
-            log.error("Error retrieving response", error=str(e))
-            raise e
+        raise TimeoutError("Assistant took too long to respond.")
 
-    def update_assistant(self, instructions: str, name: str, model: str, tools: List[Dict[str, Any]]) -> None:
+    def update_assistant(self, instructions: str, name: str, model: str, tools: list[dict[str, Any]]) -> None:
         """
-        Updates the assistant with new instructions, name, model, and tools.
+        Update the assistant’s properties and rebuild the underlying components.
 
         Args:
-            instructions: String containing instructions for the assistant.
-            name: Name of the assistant.
-            model: The model to be used by the assistant.
-            tools: A list of tool definitions.
+            instructions: New instructions for the assistant.
+            name: New name (currently not directly used by the agent).
+            model: Model identifier (maps to a Bedrock model).
+            tools: list of tool definitions.
         """
-        log.debug("Updating assistant instructions", instructions=instructions, name=name, model=model, tools=tools)
-
-        # Update relevant properties
+        log.debug("Updating assistant", instructions=instructions, name=name, model=model, tools=tools)
         self.instructions = instructions
-
-        # Update the model ID if needed - map from OpenAI model names to Bedrock models
         self.model_id = model
 
-        # Recreate the LLM with the new model
+        # Reinitialize the LLM – preserving credentials if present.
         if hasattr(self, "llm"):
-            # If we have existing credentials, use them
             if hasattr(self.llm, "aws_access_key_id") and hasattr(self.llm, "aws_secret_access_key"):
                 self.llm = ChatBedrock(
                     model=self.model_id,
@@ -314,28 +274,31 @@ class BedrockAssistant:
                     aws_secret_access_key=self.llm.aws_secret_access_key,
                 )
             else:
-                # Otherwise rely on environment variables
-                self.llm = ChatBedrock(
-                    model=self.model_id,
-                )
+                self.llm = ChatBedrock(model=self.model_id)
 
-        # Re-create the agent with updated components
+        # Note: tools can be updated externally by replacing self.tools if desired.
+        # Rebuild the agent with the updated components.
         self._create_agent()
 
 
-def create_tool(name: str, description: str, schema: type[BaseModel], func: Callable[..., Any]) -> BaseTool:
-    """Helper function to create a LangChain tool from schema and function.
+def create_tool(
+    name: str,
+    description: str,
+    schema: type[BaseModel],
+    func: Callable[..., Any],
+) -> StructuredTool:
+    """
+    Helper function to create a StructuredTool from the given function and schema.
 
     Args:
-        name: Name of the tool
-        description: Description of the tool
-        schema: Pydantic schema for the tool inputs
-        func: Function to execute when tool is called
+        name: Tool name.
+        description: Tool description.
+        schema: Pydantic BaseModel subclass describing the input schema.
+        func: Function to invoke for this tool.
 
     Returns:
-        A LangChain tool
+        A StructuredTool instance.
     """
-
     return StructuredTool.from_function(
         name=name,
         description=description,

@@ -101,6 +101,7 @@ httptools==0.6.4
 httpx==0.28.1
     # via
     #   fastapi
+    #   langgraph-sdk
     #   langsmith
     #   notion-client
     #   openai
@@ -140,8 +141,21 @@ langchain-core==0.3.40
     #   langchain-aws
     #   langchain-community
     #   langchain-text-splitters
+    #   langgraph
+    #   langgraph-checkpoint
+    #   langgraph-prebuilt
 langchain-text-splitters==0.3.6
     # via langchain
+langgraph==0.3.1
+    # via -r requirements.in
+langgraph-checkpoint==2.0.16
+    # via
+    #   langgraph
+    #   langgraph-prebuilt
+langgraph-prebuilt==0.1.1
+    # via langgraph
+langgraph-sdk==0.1.53
+    # via langgraph
 langsmith==0.3.11
     # via
     #   langchain
@@ -157,6 +171,8 @@ marshmallow==3.26.1
     # via dataclasses-json
 mdurl==0.1.2
     # via markdown-it-py
+msgpack==1.1.0
+    # via langgraph-checkpoint
 multidict==6.1.0
     # via
     #   aiohttp
@@ -175,7 +191,9 @@ oauthlib==3.2.2
 openai==1.65.1
     # via -r requirements.in
 orjson==3.10.15
-    # via langsmith
+    # via
+    #   langgraph-sdk
+    #   langsmith
 packaging==24.2
     # via
     #   langchain-core

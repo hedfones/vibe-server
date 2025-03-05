@@ -31,4 +31,5 @@ langchain
 langchain-core
 langchain-aws
 langchain-community
+langgraph
 Pillow
