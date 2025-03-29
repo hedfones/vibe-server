@@ -3,7 +3,7 @@ import json
 import structlog
 from fastapi import HTTPException
 
-from .database import DatabaseService, PostgresCredentials
+from .database import DatabaseService
 from .google_service import GoogleCalendar, GoogleGmail, SecretUpdateCallbackFunctionType
 from .secret_manager import SecretsManager
 
@@ -13,14 +13,7 @@ log = structlog.stdlib.get_logger()
 secrets = SecretsManager()
 
 # Set up database credentials using secrets manager
-db_creds = PostgresCredentials(
-    user=secrets.get("POSTGRES_USER"),
-    password=secrets.get("POSTGRES_PASSWORD"),
-    database=secrets.get("POSTGRES_DB"),
-    host=secrets.get("POSTGRES_HOST"),
-    port=int(secrets.get("POSTGRES_PORT")),
-)
-db = DatabaseService(db_creds)
+db = DatabaseService()
 
 
 def get_google_service_client_credentials(secret_id: str) -> tuple[str | None, SecretUpdateCallbackFunctionType]:

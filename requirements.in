@@ -32,4 +32,6 @@ langchain-core
 langchain-aws
 langchain-community
 langgraph
+langgraph-checkpoint-postgres
+
 Pillow

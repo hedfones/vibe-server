@@ -86,7 +86,7 @@ def get_product_locations(product_id: int) -> str:
     return location_string
 
 
-def get_product_list(assistant_id: str) -> str:
+def get_product_list(assistant_id: int) -> str:
     """Retrieve a list of products managed by a specific assistant.
 
     Args:

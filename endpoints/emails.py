@@ -3,6 +3,7 @@ from typing import Literal
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException
+from langchain_core.messages import HumanMessage
 
 from source.bedrock_assistant import BedrockAssistant
 from source.database import Message
@@ -56,16 +57,6 @@ def process_all_unread_emails_in_business_inbox(business: Business, action: Lite
     asst_config = db.get_assistant_by_business_and_type(business.id, "email")
     tz = db.get_first_associate_timezone_by_business_id(business.id)
 
-    # Initialize with AWS Bedrock
-    assistant = BedrockAssistant(
-        credentials=None,  # Will use AWS credentials from environment variables
-        assistant_id=asst_config.openai_assistant_id,
-        client_timezone=tz,
-        instructions=asst_config.instructions,
-    )
-
-    conversation = db.create_conversation(asst_config.id, tz, assistant.thread.thread_id)
-
     count = 0
     thread_ids = {m["threadId"] for m in unread_emails}
     for thread_id in thread_ids:
@@ -74,12 +65,15 @@ def process_all_unread_emails_in_business_inbox(business: Business, action: Lite
         if not thread:
             continue
 
-        messages = []
-        for email in thread:
-            message = {"role": "user", "content": json.dumps(email)}
-            assistant.add_message(message)
-            messages.append(Message(**message, conversation_id=conversation.id))
-        response = assistant.retrieve_response()
+        with BedrockAssistant.from_postgres(asst_config, client_timezone=tz) as assistant:
+            # Initialize with AWS Bedrock
+            conversation = db.create_conversation(asst_config.id, tz, assistant.thread_id)
+            messages: list[Message] = []
+            for email in thread:
+                message = {"role": "user", "content": json.dumps(email)}
+                assistant.add_message(message)
+                messages.append(Message(**message, conversation_id=conversation.id))
+            response = assistant.retrieve_response([HumanMessage(msg.content) for msg in messages])
         messages.append(Message(conversation_id=conversation.id, role="assistant", content=response))
         db.insert_messages(messages)
 

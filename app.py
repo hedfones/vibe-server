@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 import structlog
+import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +21,7 @@ scheduler = AsyncIOScheduler()
 
 async def scheduled_task():
     # Replace with your function call
-    business_ids: set[int] = {1, 2}
+    business_ids: set[int] = {1}
     return_values = {}
     for id in business_ids:
         business = db.get_business_by_id(id)
@@ -58,3 +59,6 @@ app.include_router(assistant_router, prefix="/assistant", tags=["assistant"])
 app.include_router(emails_router, prefix="/emails", tags=["emails"])
 
 structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")

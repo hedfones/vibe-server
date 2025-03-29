@@ -85,6 +85,9 @@ class Assistant(SQLModel, table=True):
     business: "Business" = Relationship(back_populates="assistants")
     conversations: list["Conversation"] = Relationship(back_populates="assistant")
 
+    def build_system_prompt(self):
+        return f"{self.instructions}\n\n{'-' * 80}\n\n{self.context}"
+
 
 class Conversation(SQLModel, table=True):
     """Represents a conversation related to a business."""
