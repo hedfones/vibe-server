@@ -1,17 +1,18 @@
 pydantic
 fastapi[standard]
 uvicorn
+apscheduler
 
 openai
 
 pytz
 sqlmodel
+psycopg[binary]
 psycopg2-binary
 pyyaml
 
 python-dateutil
 structlog
-rich
 
 google-api-python-client
 google-auth-httplib2
@@ -21,7 +22,16 @@ google-api-python-client-stubs
 notion-client
 
 boto3
-types-boto3[essential, secretsmanager]
+types-boto3[essential, secretsmanager, s3, bedrock]
 boto3-stubs
 
 Markdown
+
+langchain
+langchain-core
+langchain-aws
+langchain-community
+langgraph
+langgraph-checkpoint-postgres
+
+Pillow

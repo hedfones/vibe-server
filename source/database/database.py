@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -36,13 +37,18 @@ class PostgresCredentials:
 
 
 class DatabaseService:
-    def __init__(self, credentials: PostgresCredentials) -> None:
+    def __init__(self, credentials: PostgresCredentials | None = None, postgres_url: str | None = None) -> None:
         """Initialize the database connection using the provided credentials."""
-        # Construct the PostgreSQL URL using the provided database credentials
-        postgres_url = (
-            f"postgresql://{credentials.user}:{credentials.password}@{credentials.host}:{credentials.port}"
-            f"/{credentials.database}"
-        )
+        if not credentials and not postgres_url:
+            try:
+                postgres_url = os.environ["POSTGRES_URL"]
+            except KeyError as e:
+                raise ValueError("Either credentials or postgres_url must be provided.") from e
+
+        if not postgres_url:
+            assert credentials
+            postgres_url = self.construct_postgres_url(credentials)
+
         # Create an SQLAlchemy engine using the constructed PostgreSQL URL
         engine = create_engine(postgres_url)
 
@@ -56,6 +62,13 @@ class DatabaseService:
         SQLModel.metadata.create_all(engine)
 
         self.engine: Engine = engine
+
+    def construct_postgres_url(self, credentials: PostgresCredentials) -> str:
+        """Construct the PostgreSQL URL using the provided database credentials."""
+        return (
+            f"postgresql://{credentials.user}:{credentials.password}@{credentials.host}:{credentials.port}"
+            f"/{credentials.database}"
+        )
 
     def get_business_by_id(self, business_id: int) -> Business | None:
         """Retrieve a Business by its ID.
@@ -253,7 +266,7 @@ class DatabaseService:
             results = session.exec(stmt).all()
         return list(results)
 
-    def get_products_by_assistant_id(self, assistant_id: str) -> list[Product]:
+    def get_products_by_assistant_id(self, assistant_id: int) -> list[Product]:
         """Retrieve products associated with a specific assistant.
 
         Args:
@@ -266,7 +279,7 @@ class DatabaseService:
             stmt = (
                 select(Product)
                 .join(Assistant, Assistant.business_id == Product.business_id)
-                .where(Assistant.openai_assistant_id == assistant_id)
+                .where(Assistant.id == assistant_id)
             )
             results = session.exec(stmt).all()
         return list(results)
@@ -436,3 +449,8 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = select(ApiKey).where(ApiKey.key == api_key)
             return session.exec(stmt).one_or_none() is not None
+
+    def insert_photos(self, photos: list[Photo]) -> None:
+        with Session(self.engine) as session:
+            session.bulk_save_objects(photos)
+            session.commit()

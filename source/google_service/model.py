@@ -44,4 +44,14 @@ class EmailMessage(TypedDict):
     body: str
     sender: str
     date_sent: str
-    message_id: str
+    message_id: str | None
+
+
+class EmailHeader(TypedDict):
+    value: str
+    name: str
+
+
+class EmailMesssagePayload(TypedDict):
+    raw: str
+    threadId: NotRequired[str]

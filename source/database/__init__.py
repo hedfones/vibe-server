@@ -1,5 +1,5 @@
 from .database import DatabaseService, PostgresCredentials
-from .model import Associate, Business, Conversation, Location, Message, Photo, Product, Schedule
+from .model import Assistant, Associate, Business, Conversation, Location, Message, Photo, Product, Schedule
 
 __all__ = [
     "DatabaseService",
@@ -12,4 +12,5 @@ __all__ = [
     "Product",
     "Location",
     "Photo",
+    "Assistant",
 ]

@@ -3,7 +3,7 @@ import json
 import structlog
 from fastapi import HTTPException
 
-from .database import DatabaseService, PostgresCredentials
+from .database import DatabaseService
 from .google_service import GoogleCalendar, GoogleGmail, SecretUpdateCallbackFunctionType
 from .secret_manager import SecretsManager
 
@@ -13,34 +13,25 @@ log = structlog.stdlib.get_logger()
 secrets = SecretsManager()
 
 # Set up database credentials using secrets manager
-db_creds = PostgresCredentials(
-    user=secrets.get("POSTGRES_USER"),
-    password=secrets.get("POSTGRES_PASSWORD"),
-    database=secrets.get("POSTGRES_DB"),
-    host=secrets.get("POSTGRES_HOST"),
-    port=int(secrets.get("POSTGRES_PORT")),
-)
-db = DatabaseService(db_creds)
+db = DatabaseService()
 
 
-def get_google_service_client_credentials(secret_id: str) -> tuple[str, str | None, SecretUpdateCallbackFunctionType]:
+def get_google_service_client_credentials(secret_id: str) -> tuple[str | None, SecretUpdateCallbackFunctionType]:
     secret_name = f"GOOGLE_OAUTH2_{secret_id}"
-    creds = secrets.get_raw(secret_name)
-    client_credentials, token = creds["secret"], creds.get("token")
+    token = secrets.get_raw(secret_name)["token"]
     token = json.dumps(token) if token else None
-    client_credentials = json.dumps(client_credentials)
     callback = secrets.get_update_callback(secret_name)
-    return client_credentials, token, callback
+    return token, callback
 
 
 def get_google_calendar_by_calendar_id(calendar_id: str) -> GoogleCalendar:
-    client_secret, token, callback = get_google_service_client_credentials(calendar_id)
-    return GoogleCalendar.from_oauth2(client_secret, token, callback)
+    token, callback = get_google_service_client_credentials(calendar_id)
+    return GoogleCalendar.from_oauth2(token, callback)
 
 
 def get_gmail_by_email_id(email_id: str) -> GoogleGmail:
-    client_secret, token, callback = get_google_service_client_credentials(email_id)
-    return GoogleGmail.from_oauth2(client_secret, token, callback)
+    token, callback = get_google_service_client_credentials(email_id)
+    return GoogleGmail.from_oauth2(token, callback)
 
 
 def get_calendar_by_business_id(business_id: int) -> GoogleCalendar:

@@ -17,8 +17,10 @@ class Business(SQLModel, table=True):
     name: str
     calendar_service: str
     calendar_service_id: str
+    calendar_service_authenticated: bool = False
     email_service: str
     email_service_id: str
+    inbox_email_address: str | None = None
     notion_page_id: str
     created_at: datetime = Field(
         # Sets the default creation time to now in UTC if not provided.
@@ -62,7 +64,6 @@ class Assistant(SQLModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
-    openai_assistant_id: str
     start_message: str | None = Field(default=None)  # not used on all assistant types
     instructions: str
     context: str
@@ -82,6 +83,9 @@ class Assistant(SQLModel, table=True):
 
     business: "Business" = Relationship(back_populates="assistants")
     conversations: list["Conversation"] = Relationship(back_populates="assistant")
+
+    def build_system_prompt(self):
+        return f"{self.instructions}\n\n{'-' * 80}\n\n{self.context}"
 
 
 class Conversation(SQLModel, table=True):
