@@ -64,7 +64,6 @@ class Assistant(SQLModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
     business_id: int = Field(default=None, foreign_key="business.id")
-    openai_assistant_id: str
     start_message: str | None = Field(default=None)  # not used on all assistant types
     instructions: str
     context: str

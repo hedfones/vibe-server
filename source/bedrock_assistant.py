@@ -1,22 +1,10 @@
-#!/usr/bin/env python3
-"""
-Module for AWS Bedrock-based Assistant using LangChain 0.3.
-
-This module creates an agent with structured tools and maintains a conversation thread.
-It leverages AWS Bedrock as the language model backend and uses LangChain's utilities
-for conversation memory and tool integration.
-
-Attributes:
-    log (structlog.stdlib.BoundLogger): Logger for the module.
-"""
-
 from __future__ import annotations
 
 import os
 import uuid
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Callable
+from typing import Callable
 
 import structlog
 from langchain.tools import StructuredTool
@@ -68,14 +56,6 @@ class BedrockAssistant:
         """
         Initialize the BedrockAssistant instance.
         https://python.langchain.com/docs/how_to/message_history/#setup
-
-        Args:
-            credentials (AWSCredentials | None): AWS credentials; if None, uses environment variables.
-            assistant_id (str): Identifier for the assistant.
-            client_timezone (str): Timezone for client interactions.
-            thread_id (str | None): Optional thread identifier.
-            model_id (str): AWS Bedrock model identifier.
-            instructions (str): Instructional context for the assistant.
         """
         log.debug("Initializing BedrockAssistant", assistant=assistant_config, client_timezone=client_timezone)
         self.assistant_id: int = assistant_config.id
@@ -83,8 +63,9 @@ class BedrockAssistant:
         self.model_id: str = assistant_config.model
         self.thread_id: str = thread_id or uuid.uuid4().hex
         self.instructions_factory: Callable[[], str] = assistant_config.build_system_prompt
+        self.config: Assistant = assistant_config
 
-        self.config: RunnableConfig = {"configurable": {"thread_id": self.thread_id}}
+        self.agent_config: RunnableConfig = {"configurable": {"thread_id": self.thread_id}}
 
         # Initialize the Bedrock LLM with provided credentials or defaults.
         self.llm: ChatBedrockConverse = ChatBedrockConverse(model=self.model_id)
@@ -112,23 +93,10 @@ class BedrockAssistant:
             yield cls(assistant_config, client_timezone, thread_id, memory)
 
     def add_message(self, message: dict[str, str]) -> None:
-        """
-        Add a message to the conversation thread.
-
-        Args:
-            message (AssistantMessage): A dictionary containing the message with keys "role" and "content".
-        """
         log.debug("Adding message to BedrockAssistant", message=message)
-        _ = self.agent.update_state(self.config, {"messages": [message]})
+        _ = self.agent.update_state(self.agent_config, {"messages": [message]})
 
     def _create_tools(self) -> list[BaseTool]:
-        """
-        Create and return a list of StructuredTool objects based on function definitions and schemas.
-
-        Returns:
-            list[BaseTool]: List of tools that the assistant can use.
-        """
-
         # Helper inner classes for additional schema validation.
         class SetAppointmentTool(BaseModel):
             """
@@ -147,54 +115,85 @@ class BedrockAssistant:
 
             pass
 
-        # Define the tools.
-        tools: list[BaseTool] = [
-            create_tool(
+        tools: list[BaseTool] = []
+
+        if self.config.uses_function_check_availability:
+
+            def tool_func(params: dict[str, int]) -> str:
+                return get_availability(params["product_id"], params["location_id"], self.client_timezone)
+
+            tool = StructuredTool.from_function(
                 name="check_availability",
                 description="Check availability for a product at a location.",
                 schema=CheckAvailabilityTool,
-                func=lambda params: get_availability(
-                    params["product_id"],
-                    params["location_id"],
-                    self.client_timezone,
-                ),
-            ),
-            create_tool(
+                func=tool_func,
+            )
+            tools.append(tool)
+
+        if self.config.uses_function_get_product_locations:
+
+            def tool_func(params: dict[str, int]) -> str:
+                return get_product_locations(params["product_id"])
+
+            tool = StructuredTool.from_function(
                 name="get_product_locations",
                 description="Get locations where a product is available.",
                 schema=GetProductLocationsTool,
-                func=lambda params: get_product_locations(params["product_id"]),
-            ),
-            create_tool(
+                func=tool_func,
+            )
+            tools.append(tool)
+
+        if self.config.uses_function_get_product_list:
+
+            def tool_func(_: dict[str, int]) -> str:
+                return get_product_list(self.assistant_id)
+
+            tool = StructuredTool.from_function(
                 name="get_product_list",
                 description="Get the list of available products.",
                 schema=GetProductListTool,
-                func=lambda _: get_product_list(self.assistant_id),
-            ),
-            create_tool(
+                func=tool_func,
+            )
+            tools.append(tool)
+
+        if self.config.uses_function_set_appointment:
+
+            def tool_func(params: dict[str, str]) -> str:
+                return set_appointment(SetAppointmentsRequest.parse_json_to_request(params["request_json"]))
+
+            tool = StructuredTool.from_function(
                 name="set_appointment",
                 description="Set an appointment based on provided details.",
                 schema=SetAppointmentTool,
-                func=lambda params: set_appointment(
-                    SetAppointmentsRequest.parse_json_to_request(params["request_json"])
-                ),
-            ),
-            create_tool(
+                func=tool_func,
+            )
+            tools.append(tool)
+
+        if self.config.uses_function_get_product_photos:
+
+            def tool_func(params: dict[str, int]) -> str:
+                return get_product_photos(params["product_id"])
+
+            tool = StructuredTool.from_function(
                 name="get_product_photos",
                 description="Get photos for a specific product.",
                 schema=GetProductPhotosTool,
-                func=lambda params: get_product_photos(params["product_id"]),
-            ),
-            create_tool(
+                func=tool_func,
+            )
+            tools.append(tool)
+
+        if self.config.uses_handoff_to_admin:
+
+            def tool_func(params: dict[str, str]) -> str:
+                return handoff_conversation_to_admin(params["customer_email"], self.thread_id)
+
+            tool = StructuredTool.from_function(
                 name="handoff_to_admin",
                 description="Handoff the conversation to an admin.",
                 schema=HandoffToAdminTool,
-                func=lambda params: handoff_conversation_to_admin(
-                    params["customer_email"],
-                    self.thread_id,
-                ),
-            ),
-        ]
+                func=tool_func,
+            )
+            tools.append(tool)
         return tools
 
     def _create_agent(self):
@@ -210,49 +209,12 @@ class BedrockAssistant:
     def retrieve_response(self, messages: list[BaseMessage]) -> str:
         """
         Retrieve a response from the agent based on the last user message.
-
-        Instead of using .run(), the executor is invoked as a function to return a response dictionary,
-        from which the expected output is extracted.
-
-        Returns:
-            str: The assistant's response.
-
-        Raises:
-            ValueError: If the returned response does not contain an 'output' key.
-            TimeoutError: If the assistant takes too long to respond.
-            Exception: If an error occurs during execution.
         """
         log.debug("Retrieving response from BedrockAssistant", messages=messages)
         if not messages:
             raise ValueError("No messages provided")
 
-        response: dict[str, list[BaseMessage]] = self.agent.invoke({"messages": messages}, config=self.config)
+        response: dict[str, list[BaseMessage]] = self.agent.invoke({"messages": messages}, config=self.agent_config)
         content = response["messages"][-1].content
         assert isinstance(content, str)
         return content
-
-
-def create_tool(
-    name: str,
-    description: str,
-    schema: type[BaseModel],
-    func: Callable[..., Any],
-) -> StructuredTool:
-    """
-    Helper function to create a StructuredTool from a function and its schema.
-
-    Args:
-        name (str): The name of the tool.
-        description (str): A description of what the tool does.
-        schema (type[BaseModel]): A Pydantic model representing the input schema.
-        func (Callable[..., Any]): The function implementing the tool's behavior.
-
-    Returns:
-        StructuredTool: The constructed tool ready for integration with the agent.
-    """
-    return StructuredTool.from_function(
-        name=name,
-        description=description,
-        func=func,
-        args_schema=schema,
-    )
