@@ -1,272 +1,117 @@
-from unittest.mock import MagicMock, call, patch
+# test_bedrock_assistant.py
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
 
+# Import the class under test.
 from source.bedrock_assistant import BedrockAssistant
 
 
-@pytest.fixture
-def mock_bedrock_llm():
-    """Mock for the ChatBedrock LLM."""
-    # Create a mock for ChatBedrock with model parameter
-    mock_llm = MagicMock()
-    with patch("source.bedrock_assistant.ChatBedrock", return_value=mock_llm) as mock_class:
-        yield mock_class
+# For our fake agent and messages, we create simple classes.
+class FakeMessage:
+    def __init__(self, content: str):
+        self.content = content
 
 
-@pytest.fixture
-def mock_agent_executor():
-    """Mock for the LangChain AgentExecutor."""
-    with patch("source.bedrock_assistant.AgentExecutor") as mock:
-        mock_executor = MagicMock()
-        mock.return_value = mock_executor
-        yield mock_executor
+# This fake agent “executor” will record its calls and return a dummy response.
+class FakeAgent:
+    def __init__(self):
+        self.updated_state = None
+        self.invoked_input = None
+
+    def update_state(self, agent_config, payload):
+        self.updated_state = (agent_config, payload)
+        return None
+
+    def invoke(self, inputs, config=None):
+        self.invoked_input = (inputs, config)
+        # The assistant.retrieve_response method will look for a list of messages
+        # and take the content of the last message.
+        return {"messages": [FakeMessage("Fake Response")]}
 
 
-def test_bedrock_assistant_initialization(mock_bedrock_llm):
-    """Test initialization of BedrockAssistant class."""
-    assistant = BedrockAssistant(
-        credentials=None,
-        assistant_id="test-assistant-id",
-        client_timezone="America/New_York",
-        instructions="Test instructions",
-    )
-
-    assert assistant.assistant_id == "test-assistant-id"
-    assert assistant.client_timezone == "America/New_York"
-    assert assistant.instructions == "Test instructions"
-    assert assistant.model_id == "us.meta.llama3-3-70b-instruct-v1:0"
-    assert mock_bedrock_llm.called
+# A fake function to replace create_react_agent so that our BedrockAssistant uses our FakeAgent.
+def fake_create_react_agent(llm, tools, prompt, checkpointer):
+    return FakeAgent()
 
 
-def test_add_message(mock_bedrock_llm):
-    """Test adding a message to the assistant."""
-    assistant = BedrockAssistant(
-        credentials=None,
-        assistant_id="test-assistant-id",
-    )
-
-    # Add a user message
-    assistant.add_message({"role": "user", "content": "Hello!"})
-
-    # Check that the message was added to the thread
-    assert len(assistant.thread.messages) == 1
-    assert assistant.thread.messages[0]["role"] == "user"
-    assert assistant.thread.messages[0]["content"] == "Hello!"
-
-    # Check that the message was added to the memory
-    assert "Hello!" in str(assistant.memory.chat_memory.messages)
+# A fake LLM (ChatBedrockConverse) so that the assistant doesn’t try to use a real AWS model.
+class FakeChatBedrockConverse:
+    def __init__(self, model: str):
+        self.model = model
 
 
-@patch("source.bedrock_assistant.create_structured_chat_agent")
-@patch("source.bedrock_assistant.BedrockAssistant._create_tools")
-@patch("source.bedrock_assistant.BedrockAssistant._create_agent")
-def test_retrieve_response(mock_create_agent, mock_create_tools, mock_agent, mock_bedrock_llm):
-    """Test retrieving a response from the assistant."""
-    assistant = BedrockAssistant(
-        credentials=None,
-        assistant_id="test-assistant-id",
-    )
-
-    # Set up the agent executor mock to return a response
-    assistant.agent_executor = MagicMock()
-    assistant.agent_executor.invoke.return_value = {"output": "Hello, I'm the assistant!"}
-
-    # Add a user message
-    assistant.add_message({"role": "user", "content": "Hello!"})
-
-    # Get a response
-    response = assistant.retrieve_response()
-
-    # Check that the agent was invoked with the right message
-    assistant.agent_executor.invoke.assert_called_once()
-    assert "Hello!" in str(assistant.agent_executor.invoke.call_args)
-
-    # Check that the right response was returned
-    assert response == "Hello, I'm the assistant!"
-
-    # Check that the assistant's message was added to the thread
-    assert len(assistant.thread.messages) == 2
-    assert assistant.thread.messages[1]["role"] == "assistant"
-    assert assistant.thread.messages[1]["content"] == "Hello, I'm the assistant!"
+# We also need a fake configuration that looks like the “Assistant” configuration
+# expected by BedrockAssistant. In our tests we simply define the necessary fields.
+class FakeAssistantConfig:
+    def __init__(self, use_all_functions: bool = False):
+        self.id = 1
+        self.model = "fake-model"
+        self.build_system_prompt = lambda: "dummy prompt"
+        # Booleans indicating available tools.
+        self.uses_function_check_availability = use_all_functions
+        self.uses_function_get_product_locations = use_all_functions
+        self.uses_function_get_product_list = use_all_functions
+        self.uses_function_set_appointment = use_all_functions
+        self.uses_function_get_product_photos = use_all_functions
+        self.uses_handoff_to_admin = use_all_functions
 
 
-def test_multiple_messages(mock_bedrock_llm):
-    """Test adding multiple messages to the assistant and checking memory preservation."""
-    assistant = BedrockAssistant(
-        credentials=None,
-        assistant_id="test-assistant-id",
-    )
+# Test that retrieve_response returns the fake agent response
+# and that it raises a ValueError when no messages are provided.
+def test_retrieve_response(monkeypatch):
+    # Override the LLM and agent creation so that no external side effects occur.
+    monkeypatch.setattr("source.bedrock_assistant.ChatBedrockConverse", FakeChatBedrockConverse)
+    monkeypatch.setattr("source.bedrock_assistant.create_react_agent", fake_create_react_agent)
 
-    # Patch the agent_executor to avoid making LLM calls
-    assistant.agent_executor = MagicMock()
-    assistant.agent_executor.invoke.return_value = {"output": "I'm the assistant!"}
+    fake_config = FakeAssistantConfig()
+    assistant = BedrockAssistant(fake_config, client_timezone="UTC", thread_id="test-thread")
 
-    # Add several messages in a conversation flow
-    messages = [
-        {"role": "user", "content": "Hello!"},
-        {"role": "assistant", "content": "Hi there! How can I help?"},
-        {"role": "user", "content": "Tell me about yourself"},
-        {"role": "assistant", "content": "I'm an AI assistant built with LangChain and AWS Bedrock"},
-    ]
+    # Calling retrieve_response with an empty list should raise a ValueError.
+    with pytest.raises(ValueError):
+        assistant.retrieve_response([])
 
-    # Add each message
-    for message in messages:
-        assistant.add_message(message)
-
-    # Check that the thread contains all messages in order
-    assert len(assistant.thread.messages) == 4
-    for i, message in enumerate(messages):
-        assert assistant.thread.messages[i]["role"] == message["role"]
-        assert assistant.thread.messages[i]["content"] == message["content"]
-
-    # Check the memory has the correct messages
-    memory_messages = assistant.memory.chat_memory.messages
-    assert len(memory_messages) == 4
-
-    # Verify types are correct in memory
-    assert isinstance(memory_messages[0], HumanMessage)
-    assert isinstance(memory_messages[1], AIMessage)
-    assert isinstance(memory_messages[2], HumanMessage)
-    assert isinstance(memory_messages[3], AIMessage)
-
-    # Verify content is correct
-    assert memory_messages[0].content == "Hello!"
-    assert memory_messages[1].content == "Hi there! How can I help?"
-    assert memory_messages[2].content == "Tell me about yourself"
-    assert memory_messages[3].content == "I'm an AI assistant built with LangChain and AWS Bedrock"
+    # Create a dummy message list.
+    dummy_msg = FakeMessage("Test message")
+    response = assistant.retrieve_response([dummy_msg])
+    assert response == "Fake Response"
 
 
-@patch("source.bedrock_assistant.hub.pull")
-@patch("source.bedrock_assistant.AgentExecutor")
-def test_agent_creation(mock_agent_executor, mock_hub_pull, mock_bedrock_llm):
-    """Test the agent creation process with prompt template."""
-    # Set up the mock prompt template and agent executor
-    mock_prompt_template = MagicMock()
-    mock_hub_pull.return_value = mock_prompt_template
-    mock_agent_executor.return_value = MagicMock()
+# Test that add_message correctly passes the message to the agent.
+def test_add_message(monkeypatch):
+    monkeypatch.setattr("source.bedrock_assistant.ChatBedrockConverse", FakeChatBedrockConverse)
+    monkeypatch.setattr("source.bedrock_assistant.create_react_agent", fake_create_react_agent)
 
-    # Mock the create_structured_chat_agent to return a properly mocked agent
-    with patch("source.bedrock_assistant.create_structured_chat_agent") as mock_create_agent:
-        mock_agent = MagicMock()
-        mock_create_agent.return_value = mock_agent
+    fake_config = FakeAssistantConfig()
+    assistant = BedrockAssistant(fake_config, client_timezone="UTC", thread_id="test-thread")
+    message = {"role": "user", "content": "Hello"}
+    assistant.add_message(message)
 
-        # Create the assistant
-        assistant = BedrockAssistant(
-            credentials=None, assistant_id="test-assistant-id", instructions="Follow these instructions carefully"
-        )
-
-        # Check that the hub was used to pull the prompt
-        mock_hub_pull.assert_called_once_with("anthonydresser/structured-chat-agent-llama")
-
-        # Check that create_structured_chat_agent was called with correct parameters
-        mock_create_agent.assert_called_once()
-        call_args = mock_create_agent.call_args
-        assert call_args[1]["llm"] == assistant.llm
-        assert call_args[1]["tools"] == assistant.tools
-        assert call_args[1]["prompt"] == mock_prompt_template
+    # The FakeAgent records calls to update_state.
+    assert assistant.agent.updated_state is not None
+    agent_config, payload = assistant.agent.updated_state
+    assert "messages" in payload
+    assert payload["messages"] == [message]
 
 
-@patch("source.bedrock_assistant.AgentExecutor")
-def test_memory_in_agent_executor(mock_agent_executor, mock_bedrock_llm):
-    """Test that memory is correctly passed to the agent executor."""
-    mock_executor = MagicMock()
-    mock_agent_executor.return_value = mock_executor
+# Test that when the configuration has no functions enabled the created tools list is empty.
+def test_create_tools_no_functions(monkeypatch):
+    monkeypatch.setattr("source.bedrock_assistant.ChatBedrockConverse", FakeChatBedrockConverse)
+    monkeypatch.setattr("source.bedrock_assistant.create_react_agent", fake_create_react_agent)
 
-    with patch("source.bedrock_assistant.create_structured_chat_agent", return_value=MagicMock()):
-        # Create assistant
-        assistant = BedrockAssistant(
-            credentials=None,
-            assistant_id="test-assistant-id",
-        )
-
-        # Check that AgentExecutor was created with memory
-        mock_agent_executor.assert_called_once()
-        kwargs = mock_agent_executor.call_args[1]
-        assert "memory" in kwargs
-        assert kwargs["memory"] == assistant.memory
+    fake_config = FakeAssistantConfig(use_all_functions=False)
+    assistant = BedrockAssistant(fake_config)
+    # When no functions are enabled, no tool should be created.
+    assert assistant.tools == []
 
 
-def test_update_assistant(mock_bedrock_llm):
-    """Test updating assistant configuration."""
-    assistant = BedrockAssistant(
-        credentials=None,
-        assistant_id="test-assistant-id",
-        model_id="anthropic.claude-3-sonnet-20240229-v1:0",
-    )
+# Test that all tools are created when the configuration flags are set.
+def test_create_tools_with_functions(monkeypatch):
+    monkeypatch.setattr("source.bedrock_assistant.ChatBedrockConverse", FakeChatBedrockConverse)
+    monkeypatch.setattr("source.bedrock_assistant.create_react_agent", fake_create_react_agent)
 
-    # Original values
-
-    # Mock _create_agent to avoid side effects
-    with patch.object(assistant, "_create_agent") as mock_create_agent:
-        # Update the assistant
-        new_instructions = "These are new instructions for the assistant"
-        new_name = "New Assistant Name"
-        new_model = "anthropic.claude-3-opus-20240229-v1:0"
-
-        assistant.update_assistant(instructions=new_instructions, name=new_name, model=new_model, tools=[])
-
-        # Check that values were updated
-        assert assistant.instructions == new_instructions
-        assert assistant.model_id == new_model
-
-        # Check that _create_agent was called to rebuild the agent
-        mock_create_agent.assert_called_once()
-
-
-def test_conversation_continuity(mock_bedrock_llm):
-    """Test that conversation continues properly with memory retention."""
-    # Create assistant with mocked executor and memory
-    assistant = BedrockAssistant(
-        credentials=None,
-        assistant_id="test-assistant-id",
-    )
-
-    # Override memory to a mock for better testing
-    assistant.memory = MagicMock()
-    assistant.memory.load_memory_variables.return_value = {"chat_history": []}
-
-    # Mock agent_executor.invoke to return different responses on each call
-    assistant.agent_executor = MagicMock()
-    assistant.agent_executor.invoke.side_effect = [
-        {"output": "First response"},
-        {"output": "Second response that references the first question"},
-        {"output": "Third response with context from previous interactions"},
-    ]
-
-    # First interaction
-    assistant.add_message({"role": "user", "content": "Hello, how are you?"})
-    response1 = assistant.retrieve_response()
-
-    # Second interaction
-    assistant.add_message({"role": "user", "content": "What did I just ask you?"})
-    response2 = assistant.retrieve_response()
-
-    # Third interaction
-    assistant.add_message({"role": "user", "content": "Summarize our conversation"})
-    response3 = assistant.retrieve_response()
-
-    # Verify responses
-    assert response1 == "First response"
-    assert response2 == "Second response that references the first question"
-    assert response3 == "Third response with context from previous interactions"
-
-    # Verify memory was used by checking the chat_memory.add_* methods were called correctly
-    [
-        call({"role": "user", "content": "Hello, how are you?"}),
-        call({"role": "assistant", "content": "First response"}),
-        call({"role": "user", "content": "What did I just ask you?"}),
-        call({"role": "assistant", "content": "Second response that references the first question"}),
-        call({"role": "user", "content": "Summarize our conversation"}),
-        call({"role": "assistant", "content": "Third response with context from previous interactions"}),
-    ]
-
-    assert len(assistant.thread.messages) == 6
-    # First three messages should be user1, assistant1, user2
-    assert assistant.thread.messages[0]["role"] == "user"
-    assert assistant.thread.messages[0]["content"] == "Hello, how are you?"
-    assert assistant.thread.messages[1]["role"] == "assistant"
-    assert assistant.thread.messages[1]["content"] == "First response"
-    assert assistant.thread.messages[2]["role"] == "user"
-    assert assistant.thread.messages[2]["content"] == "What did I just ask you?"
+    fake_config = FakeAssistantConfig(use_all_functions=True)
+    assistant = BedrockAssistant(fake_config)
+    # Based on the implementation, six tools should be added:
+    #   check_availability, get_product_locations, get_product_list,
+    #   set_appointment, get_product_photos, and handoff_to_admin.
+    assert len(assistant.tools) == 6
