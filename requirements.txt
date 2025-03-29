@@ -214,11 +214,13 @@ protobuf==6.30.2
     #   googleapis-common-protos
     #   proto-plus
 psycopg==3.2.6
-    # via langgraph-checkpoint-postgres
+    # via
+    #   -r requirements.in
+    #   langgraph-checkpoint-postgres
+psycopg-binary==3.2.6
+    # via psycopg
 psycopg-pool==3.2.6
     # via langgraph-checkpoint-postgres
-psycopg2==2.9.10
-    # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
 pyasn1==0.6.1
