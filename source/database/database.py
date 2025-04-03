@@ -5,7 +5,7 @@ from datetime import datetime
 import pytz
 from fastapi import HTTPException
 from sqlalchemy import Engine, create_engine, desc
-from sqlmodel import Session, SQLModel, select, text
+from sqlmodel import Session, SQLModel, col, select, text
 
 from .model import (
     Admin,
@@ -22,6 +22,8 @@ from .model import (
     PhotoProductLink,
     Product,
     Schedule,
+    ScheduledService,
+    ScheduledServiceDimension,
 )
 
 
@@ -454,3 +456,18 @@ class DatabaseService:
         with Session(self.engine) as session:
             session.bulk_save_objects(photos)
             session.commit()
+
+    def get_scheduled_services(self, service_type: str) -> list[Business]:
+        with Session(self.engine) as session:
+            stmt = (
+                select(Business)
+                .join(ScheduledService, col(ScheduledService.business_id) == col(Business.id))
+                .join(
+                    ScheduledServiceDimension,
+                    col(ScheduledServiceDimension.id) == col(ScheduledService.service_dimension_id),
+                )
+                .where(col(ScheduledServiceDimension.service_type) == service_type)
+                .distinct()
+            )
+            services = session.exec(stmt).all()
+        return list(services)

@@ -1,4 +1,4 @@
-ipykernel
+marimo
 ruff
 isort
 pre-commit

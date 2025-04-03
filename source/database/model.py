@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum
+from typing import ClassVar
 
 import pytz
 from sqlalchemy import Column, DateTime, Sequence, func
@@ -37,6 +38,35 @@ class Business(SQLModel, table=True):
     assistants: list["Assistant"] = Relationship(back_populates="business")
     admins: list["Admin"] = Relationship(back_populates="business")
     api_keys: list["ApiKey"] = Relationship(back_populates="business")
+    scheduled_services: list["ScheduledService"] = Relationship(back_populates="business")
+
+
+class ScheduledServiceDimension(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "scheduled_service_dimension"
+
+    id: int = Field(default=None, primary_key=True)
+    service_type: str
+
+    scheduled_services: list["ScheduledService"] = Relationship(back_populates="service_dimension")
+
+
+class ScheduledService(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "scheduled_service"
+
+    id: int = Field(default=None, primary_key=True)
+    business_id: int = Field(default=None, foreign_key="business.id")
+    service_dimension_id: int = Field(default=None, foreign_key="scheduled_service_dimension.id")
+    created_at: datetime = Field(
+        # Sets the default creation time to now in UTC if not provided.
+        default_factory=lambda: datetime.now(utc),
+        # Sets the server's default column value for the creation time.
+        sa_column=Column(DateTime, server_default=func.now()),
+    )
+
+    business: "Business" = Relationship(back_populates="scheduled_services")
+    service_dimension: "ScheduledServiceDimension" = Relationship(
+        back_populates="scheduled_services", sa_relationship_kwargs={"lazy": "joined"}
+    )
 
 
 class Admin(SQLModel, table=True):
@@ -218,7 +248,7 @@ class PhotoProductLink(SQLModel, table=True):
     and the same photo can be linked to multiple products.
     """
 
-    __tablename__ = "photo_product_link"
+    __tablename__: ClassVar[str] = "photo_product_link"
 
     photo_id: int | None = Field(default=None, foreign_key="photo.id", primary_key=True)
     product_id: int | None = Field(default=None, foreign_key="product.id", primary_key=True)
@@ -232,7 +262,7 @@ class LocationProductLink(SQLModel, table=True):
     the same product can be found at multiple locations.
     """
 
-    __tablename__ = "location_product_link"
+    __tablename__: ClassVar[str] = "location_product_link"
 
     location_id: int = Field(default=None, foreign_key="location.id", primary_key=True)
     product_id: int = Field(default=None, foreign_key="product.id", primary_key=True)
@@ -249,7 +279,7 @@ class AssociateProductLink(SQLModel, table=True):
     the same product can be offered by multiple locations.
     """
 
-    __tablename__ = "associate_product_link"
+    __tablename__: ClassVar[str] = "associate_product_link"
 
     associate_id: int = Field(default=None, foreign_key="associate.id", primary_key=True)
     product_id: int = Field(default=None, foreign_key="product.id", primary_key=True)
@@ -288,6 +318,8 @@ class Schedule(SQLModel, table=True):
 
 class ApiKey(SQLModel, table=True):
     """Represents an API key with an associated business."""
+
+    __tablename__: ClassVar[str] = "api_key"
 
     id: int = Field(default=None, primary_key=True)
     key: str = Field(default_factory=lambda: str(uuid.uuid4()))

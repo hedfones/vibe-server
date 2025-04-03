@@ -19,19 +19,18 @@ from source.utils import db
 scheduler = AsyncIOScheduler()
 
 
-async def scheduled_task():
+async def scheduled_task() -> dict[int, dict[str, int]]:
     # Replace with your function call
-    business_ids: set[int] = {1}
-    return_values = {}
-    for id in business_ids:
-        business = db.get_business_by_id(id)
+    business_list = db.get_scheduled_services(service_type="email")
+    return_values: dict[int, dict[str, int]] = {}
+    for business in business_list:
         drafts_created_count = process_all_unread_emails_in_business_inbox(business, action="draft")
-        return_values[id] = {"drafts_created": drafts_created_count}
+        return_values[business.id] = {"drafts_created": drafts_created_count}
     return return_values
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     _ = scheduler.add_job(scheduled_task, "interval", minutes=1)  # Adjust the interval as needed
     scheduler.start()
     yield
