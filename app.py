@@ -21,7 +21,7 @@ scheduler = AsyncIOScheduler()
 
 async def scheduled_task() -> dict[int, dict[str, int]]:
     # Replace with your function call
-    business_list = db.get_scheduled_services(service_type="email")
+    business_list = db.get_scheduled_services(service_type="email_draft")
     return_values: dict[int, dict[str, int]] = {}
     for business in business_list:
         drafts_created_count = process_all_unread_emails_in_business_inbox(business, action="draft")
