@@ -1,13 +1,17 @@
 import json
+import os
+import re
 from typing import Literal
 
+import requests
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException
 from langchain_core.messages import HumanMessage
 
 from source.bedrock_assistant import BedrockAssistant
 from source.database import Message
-from source.database.model import Business
+from source.database.model import AssistantFilter, Business
+from source.google_service.model import EmailMessage
 from source.utils import db, get_email_by_business_id, strip_markdown_lines
 
 log = structlog.stdlib.get_logger()
@@ -39,6 +43,38 @@ def process_unread_emails_draft(x_api_key: str = Header(...)) -> dict[str, int]:
     return {"drafts_created": drafts_created_count}
 
 
+def detect_is_customer_email(
+    filters: list[AssistantFilter], email: EmailMessage, do_sophisticated_check: bool = True
+) -> bool:
+    for filter in filters:
+        pattern = re.escape(filter.filter_value)
+        match_found = re.search(pattern, email["sender"]) is not None
+        if match_found and filter.is_blacklist:
+            return True
+        if match_found and filter.is_blacklist:
+            return False
+
+    if not do_sophisticated_check:
+        return True
+
+    response = requests.post(
+        os.environ["EMAIL_CLASSIFICATION_URL"],
+        json={"email": {"sender": email["sender"], "subject": email["subject"], "body": email["body"]}},
+    )
+    response.raise_for_status()
+
+    response_body: dict[str, str] = response.json()
+
+    return response_body["classification"] == "customer"
+
+
+def detect_thread_is_actionable(filters: list[AssistantFilter], thread: list[EmailMessage]) -> bool:
+    if len(thread) == 1:
+        return detect_is_customer_email(filters, thread[0])
+
+    return True
+
+
 def process_all_unread_emails_in_business_inbox(business: Business, action: Literal["draft", "send"]) -> int:
     """
     Helper function to process unread emails from a business mailbox.
@@ -63,6 +99,8 @@ def process_all_unread_emails_in_business_inbox(business: Business, action: Lite
         # Get full email thread.
         thread = mailbox.get_messages_in_thread(thread_id)
         if not thread:
+            continue
+        if detect_thread_is_actionable(asst_config.filters, thread):
             continue
 
         with BedrockAssistant.from_postgres(asst_config, client_timezone=tz) as assistant:

@@ -18,17 +18,17 @@ apscheduler==3.11.0
     # via -r requirements.in
 attrs==25.3.0
     # via aiohttp
-boto3==1.37.26
+boto3==1.37.28
     # via
     #   -r requirements.in
     #   langchain-aws
-boto3-stubs==1.37.26
+boto3-stubs==1.37.28
     # via -r requirements.in
-botocore==1.37.26
+botocore==1.37.28
     # via
     #   boto3
     #   s3transfer
-botocore-stubs==1.37.26
+botocore-stubs==1.37.28
     # via
     #   boto3-stubs
     #   types-boto3
@@ -124,15 +124,15 @@ jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
     # via jsonpatch
-langchain==0.3.22
+langchain==0.3.23
     # via
     #   -r requirements.in
     #   langchain-community
 langchain-aws==0.2.18
     # via -r requirements.in
-langchain-community==0.3.20
+langchain-community==0.3.21
     # via -r requirements.in
-langchain-core==0.3.50
+langchain-core==0.3.51
     # via
     #   -r requirements.in
     #   langchain
@@ -142,9 +142,9 @@ langchain-core==0.3.50
     #   langgraph
     #   langgraph-checkpoint
     #   langgraph-prebuilt
-langchain-text-splitters==0.3.7
+langchain-text-splitters==0.3.8
     # via langchain
-langgraph==0.3.24
+langgraph==0.3.25
     # via -r requirements.in
 langgraph-checkpoint==2.0.24
     # via
@@ -153,11 +153,11 @@ langgraph-checkpoint==2.0.24
     #   langgraph-prebuilt
 langgraph-checkpoint-postgres==2.0.19
     # via -r requirements.in
-langgraph-prebuilt==0.1.7
+langgraph-prebuilt==0.1.8
     # via langgraph
-langgraph-sdk==0.1.60
+langgraph-sdk==0.1.61
     # via langgraph
-langsmith==0.3.23
+langsmith==0.3.24
     # via
     #   langchain
     #   langchain-community
@@ -172,7 +172,7 @@ marshmallow==3.26.1
     # via dataclasses-json
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.2.0
+multidict==6.3.2
     # via
     #   aiohttp
     #   yarl
@@ -229,7 +229,7 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.2
     # via google-auth
-pydantic==2.11.1
+pydantic==2.11.2
     # via
     #   -r requirements.in
     #   fastapi
@@ -240,7 +240,7 @@ pydantic==2.11.1
     #   openai
     #   pydantic-settings
     #   sqlmodel
-pydantic-core==2.33.0
+pydantic-core==2.33.1
     # via pydantic
 pydantic-settings==2.8.1
     # via langchain-community
@@ -317,9 +317,9 @@ tqdm==4.67.1
     # via openai
 typer==0.15.2
     # via fastapi-cli
-types-awscrt==0.24.2
+types-awscrt==0.25.7
     # via botocore-stubs
-types-boto3==1.37.26
+types-boto3==1.37.28
     # via -r requirements.in
 types-boto3-bedrock==1.37.18
     # via types-boto3
@@ -327,7 +327,7 @@ types-boto3-cloudformation==1.37.22
     # via types-boto3
 types-boto3-dynamodb==1.37.12
     # via types-boto3
-types-boto3-ec2==1.37.24
+types-boto3-ec2==1.37.28
     # via types-boto3
 types-boto3-lambda==1.37.16
     # via types-boto3
@@ -345,7 +345,7 @@ types-s3transfer==0.11.4
     # via
     #   boto3-stubs
     #   types-boto3
-typing-extensions==4.13.0
+typing-extensions==4.13.1
     # via
     #   anyio
     #   fastapi
@@ -386,7 +386,7 @@ websockets==15.0.1
     # via uvicorn
 xxhash==3.5.0
     # via langgraph
-yarl==1.18.3
+yarl==1.19.0
     # via aiohttp
 zstandard==0.23.0
     # via langsmith

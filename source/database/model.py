@@ -113,9 +113,24 @@ class Assistant(SQLModel, table=True):
 
     business: "Business" = Relationship(back_populates="assistants")
     conversations: list["Conversation"] = Relationship(back_populates="assistant")
+    filters: list["AssistantFilter"] = Relationship(
+        back_populates="assistant", sa_relationship_kwargs={"lazy": "joined"}
+    )
 
     def build_system_prompt(self):
         return f"{self.instructions}\n\n{'-' * 80}\n\n{self.context}"
+
+
+class AssistantFilter(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "assistant_filters"
+
+    id: int = Field(default=None, primary_key=True)
+    assistant_id: int = Field(default=None, foreign_key="assistant.id")
+    filter_type: str
+    filter_value: str
+    is_blacklist: bool = Field(default=False)
+
+    assistant: "Assistant" = Relationship(back_populates="filters")
 
 
 class Conversation(SQLModel, table=True):

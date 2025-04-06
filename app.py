@@ -41,7 +41,6 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        # "https://hedfones.netlify.app",
         # "http://localhost:8080",
         # "https://app.hedfones.com",
         "*"
