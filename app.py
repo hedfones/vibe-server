@@ -19,7 +19,7 @@ from source.utils import db
 scheduler = AsyncIOScheduler()
 
 
-async def scheduled_task() -> dict[int, dict[str, int]]:
+async def scheduled_task_draft_emails() -> dict[int, dict[str, int]]:
     # Replace with your function call
     business_list = db.get_scheduled_services(service_type="email_draft")
     return_values: dict[int, dict[str, int]] = {}
@@ -29,9 +29,25 @@ async def scheduled_task() -> dict[int, dict[str, int]]:
     return return_values
 
 
+async def scheduled_task_draft_send_emails() -> dict[int, dict[str, int]]:
+    # Replace with your function call
+    business_list = db.get_scheduled_services(service_type="email_draft_send")
+    return_values: dict[int, dict[str, int]] = {}
+    for business in business_list:
+        raise NotImplementedError("This isn't ready yet.")
+        drafts_created_count = process_all_unread_emails_in_business_inbox(business, action="send")
+        return_values[business.id] = {"drafts_created": drafts_created_count}
+    return return_values
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    _ = scheduler.add_job(scheduled_task, "interval", minutes=1)  # Adjust the interval as needed
+    _ = scheduler.add_job(
+        func=scheduled_task_draft_emails, trigger="interval", minutes=1
+    )  # Adjust the interval as needed
+    _ = scheduler.add_job(
+        func=scheduled_task_draft_send_emails, trigger="interval", minutes=10
+    )  # Adjust the interval as needed
     scheduler.start()
     yield
     scheduler.shutdown()
