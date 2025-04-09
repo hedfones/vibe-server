@@ -105,7 +105,8 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = (
                 select(Assistant)
-                .where(Assistant.business_id == business_id, Assistant.type == assistant_type)
+                .where(col(Assistant.business_id) == business_id)
+                .where(col(Assistant.type) == assistant_type)
                 .distinct()
             )
             assistant = session.exec(stmt).one_or_none()
