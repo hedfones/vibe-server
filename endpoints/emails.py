@@ -102,8 +102,8 @@ def process_all_unread_emails_in_business_inbox(business: Business, action: Lite
         thread = mailbox.get_messages_in_thread(thread_id)
         if not thread:
             continue
-        if detect_thread_is_actionable(asst_config.filters, thread):
-            continue
+        # if not detect_thread_is_actionable(asst_config.filters, thread):
+        #     continue
 
         with BedrockAssistant.from_postgres(asst_config, client_timezone=tz) as assistant:
             # Initialize with AWS Bedrock
