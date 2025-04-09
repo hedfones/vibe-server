@@ -13,7 +13,7 @@ from endpoints.conversation import router as conversation_router
 from endpoints.emails import process_all_unread_emails_in_business_inbox
 from endpoints.emails import router as emails_router
 from endpoints.files import router as files_router
-from endpoints.notions import router as notion_router  # or from endpoints.notation.py if you prefer
+from endpoints.notions import router as notion_router
 from source.utils import db
 
 scheduler = AsyncIOScheduler()
@@ -42,9 +42,7 @@ async def scheduled_task_draft_send_emails() -> dict[int, dict[str, int]]:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    _ = scheduler.add_job(
-        func=scheduled_task_draft_emails, trigger="interval", minutes=1
-    )  # Adjust the interval as needed
+    _ = scheduler.add_job(func=scheduled_task_draft_emails, trigger="interval", minutes=1)
     _ = scheduler.add_job(
         func=scheduled_task_draft_send_emails, trigger="interval", minutes=10
     )  # Adjust the interval as needed

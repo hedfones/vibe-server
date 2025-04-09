@@ -91,6 +91,8 @@ def process_all_unread_emails_in_business_inbox(business: Business, action: Lite
 
     # Configure the BedrockAssistant for email responses.
     asst_config = db.get_assistant_by_business_and_type(business.id, "email")
+    if not asst_config:
+        return 0
     tz = db.get_first_associate_timezone_by_business_id(business.id)
 
     count = 0

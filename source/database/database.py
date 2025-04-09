@@ -101,10 +101,14 @@ class DatabaseService:
             business = apikey.business
         return business
 
-    def get_assistant_by_business_and_type(self, business_id: int, assistant_type: str) -> Assistant:
+    def get_assistant_by_business_and_type(self, business_id: int, assistant_type: str) -> Assistant | None:
         with Session(self.engine) as session:
-            stmt = select(Assistant).where(Assistant.business_id == business_id, Assistant.type == assistant_type)
-            assistant = session.exec(stmt).one()
+            stmt = (
+                select(Assistant)
+                .where(Assistant.business_id == business_id, Assistant.type == assistant_type)
+                .distinct()
+            )
+            assistant = session.exec(stmt).one_or_none()
         return assistant
 
     def update_assistant_context(self, business_id: int, context: str) -> None:
