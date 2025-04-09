@@ -109,7 +109,7 @@ class DatabaseService:
                 .where(col(Assistant.type) == assistant_type)
                 .distinct()
             )
-            assistant = session.exec(stmt).one_or_none()
+            assistant = session.exec(stmt).unique().one()
         return assistant
 
     def update_assistant_context(self, business_id: int, context: str) -> None:
