@@ -157,8 +157,10 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = (
                 select(Conversation, Business)
-                .join(Assistant, Assistant.id == Conversation.assistant_id)  # Assuming Conversation has an assistant_id
-                .join(Business, Business.id == Assistant.business_id)
+                .join(
+                    Assistant, col(Assistant.id) == col(Conversation.assistant_id)
+                )  # Assuming Conversation has an assistant_id
+                .join(Business, col(Business.id) == col(Assistant.business_id))
                 .where(Conversation.id == conversation_id)
             )
             result = session.exec(stmt).first()
@@ -195,15 +197,15 @@ class DatabaseService:
                 select(Associate)
                 .join(
                     AssociateProductLink,
-                    AssociateProductLink.associate_id == Associate.id,
+                    col(AssociateProductLink.associate_id) == col(Associate.id),
                 )
                 .join(
                     LocationProductLink,
-                    LocationProductLink.product_id == AssociateProductLink.product_id,
+                    col(LocationProductLink.product_id) == col(AssociateProductLink.product_id),
                 )
                 .where(
-                    LocationProductLink.location_id == location_id,
-                    AssociateProductLink.product_id == product_id,
+                    col(LocationProductLink.location_id) == location_id,
+                    col(AssociateProductLink.product_id) == product_id,
                 )
             )
             associates = session.exec(stmt).all()
@@ -240,7 +242,7 @@ class DatabaseService:
             list[SQLModel]: A list of model objects from the specified table ordered by creation time.
         """
         with Session(self.engine) as session:
-            stmt = select(Table).where(Table.id == id).order_by(desc(Table.created_at))
+            stmt = select(Table).where(col(Table.id) == id).order_by(desc(col(Table.created_at)))
             results = session.exec(stmt).all()
             return list(results)
 
@@ -285,7 +287,7 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = (
                 select(Product)
-                .join(Assistant, Assistant.business_id == Product.business_id)
+                .join(Assistant, col(Assistant.business_id) == col(Product.business_id))
                 .where(Assistant.id == assistant_id)
             )
             results = session.exec(stmt).all()
@@ -377,9 +379,9 @@ class DatabaseService:
         with Session(self.engine) as session:
             stmt = (
                 select(Location)
-                .join(LocationProductLink, Location.id == LocationProductLink.location_id)
-                .join(AssociateProductLink, LocationProductLink.product_id == AssociateProductLink.product_id)
-                .where(AssociateProductLink.associate_id == associate_id)
+                .join(LocationProductLink, col(Location.id) == col(LocationProductLink.location_id))
+                .join(AssociateProductLink, col(LocationProductLink.product_id) == col(AssociateProductLink.product_id))
+                .where(col(AssociateProductLink.associate_id) == associate_id)
             )
             results = session.exec(stmt).all()
         return list(results)
